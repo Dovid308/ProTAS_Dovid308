@@ -88,7 +88,7 @@ class SingleStageModel(nn.Module):
         self.conv_out = nn.Conv1d(num_f_maps, num_classes, 1)
         ### Action Progress Prediction (APP) module
         self.gru_app = nn.GRU(num_f_maps, num_f_maps, num_layers=1, batch_first=True, bidirectional=not causal)
-        self.conv_app = nn.Conv1d(num_f_maps, num_classes, 1)
+        self.conv_app = nn.Conv1d(num_f_maps*2 if not causal else num_f_maps, num_classes, 1)
         self.prob_fusion = ProbabilityProgressFusionModel(num_classes)
 
     def forward(self, x, mask):

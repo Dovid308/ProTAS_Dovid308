@@ -65,6 +65,6 @@ def write_graph_from_transcripts(dataset, bg_class=[0], map_delimiter=' '):
 if __name__ == '__main__':
     # Generate graphs for specified datasets
     write_graph_from_transcripts('gtea', [10], ' ')
-    for dataset in ['coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla']:
-        write_graph_from_transcripts(dataset, [0], '|')
+    ##for dataset in ['coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla']:
+    ##    write_graph_from_transcripts(dataset, [0], '|')
 

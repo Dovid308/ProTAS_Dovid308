@@ -54,6 +54,6 @@ def write_progress_values(dataset, bg_class=[0], map_delimiter=' '):
 if __name__ == '__main__':
     # Generate progress values for specified datasets
     write_progress_values('gtea', [10], ' ')
-    for dataset in ['coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla']:
-        write_progress_values(dataset, [0], '|')
+    #for dataset in ['coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla']:
+    #    write_progress_values(dataset, [0], '|')
 
