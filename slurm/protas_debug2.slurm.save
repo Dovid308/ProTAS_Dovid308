@@ -1,0 +1,62 @@
+#!/bin/bash
+# ProTAS DEBUG - UniPD Math HPC (partition=debug)
+
+#SBATCH --job-name=ProTAS_debug
+#SBATCH --partition=debug
+#SBATCH --account=thesis
+#SBATCH --ntasks=1
+#SBATCH --mem=4G
+#SBATCH --time=00:20:00
+#SBATCH --error=slurm/logs/protas_debug.err
+#SBATCH --output=slurm/logs/protas_debug.out
+
+echo "ProTAS DEBUG START ($(date))"
+echo "Host: $(hostname)"
+echo "Partition: debug | Account: thesis"
+echo "CPUs: 4 | Mem: 4G | Time: 20min"
+echo "Working dir: $(pwd)"
+
+
+source /conf/shared-software/anaconda/etc/profile.d/conda.sh
+conda activate protas_new  # o il tuo env
+echo "Conda: $(conda info --envs | grep '*' ) | Python: $(python --version)"
+
+# 1. Unzip dataset
+echo "1. Unzipping dataset..."
+if [ -f "data/gtea_dataset.zip" ]; then
+    unzip -q -o data/gtea_dataset.zip -d data/
+    mv data/content/gtea data/gtea
+    rm -rf data/content/  # pulisce la cartella content vuota
+    echo "Dataset unzipped: $(du -sh data/ | cut -f1)"
+else
+    echo "ERROR: gtea_dataset.zip not found!"
+    exit 1
+fi
+
+# 2. Build graph/progress
+echo "2. Building graph & progress..."
+if [ -f "utils/write_graph.py" ]; then
+    python utils/write_graph.py
+fi
+if [ -f "utils/write_progress_values.py" ]; then
+    python utils/(base) gdovidio@labsrv8:~/storage/ProTAS_Dovid308$ cd utils/ (base) 
+gdovidio@labsrv8:~/storage/ProTAS_Dovid308/utils$ ls write_graph.py write_progress_values.py 
+(base) gdovidio@labsrv8:~/storage/ProTAS_Dovid308/utils$ cd .. .py fi
+
+# 3. Training (5 epochs, CPU only)
+echo "3. Training 5 epochs (CPU)..."
+python main.py \
+  --action train \
+  --dataset gtea \
+  --split 1 \
+  --exp_id protas_debug \
+  --graph --learnable_graph \
+  --num_epochs 5 \
+  --batch_size 4 \
+  --lr 0.001
+
+echo "SUMMARY:"
+ls -la models/protas_debug/gtea/split_1/ 2>/dev/null || echo "No models saved"
+echo "Disk usage: $(du -sh . | cut -f1)"
+echo "End: $(date)"
+echo "DEBUG COMPLETE!"
