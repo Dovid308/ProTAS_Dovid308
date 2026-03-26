@@ -3,42 +3,66 @@ import os
 from itertools import groupby
 import tqdm
 import pickle
+from pathlib import Path
+
+# ==============================================================
+# PATH SETTINGS (Relative Path)
+# ==============================================================
+BASE_PATH = Path("data/EgoPER_action_segmentation")
 
 def write_graph_from_transcripts(dataset, bg_class=[0], map_delimiter=' '):
     """
-    Generate and write a task graph from transcripts of actions.
+    Generate and write a task graph from transcripts of actions for a single recipe.
+    Uses the ORIGINAL logic: reads from local 'groundTruth' and local 'mapping.txt'.
 
     Parameters:
-    - dataset (str): The name of the dataset.
+    - dataset (str): The name of the dataset (e.g., 'coffee').
     - bg_class (list): List of background class labels to ignore.
-    - map_delimiter (str): Delimiter used in the mapping file.
+    - map_delimiter (str): Delimiter used in the local mapping file.
     """
-    gt_path = os.path.join('data', dataset, 'groundTruth')
-    mapping_file = os.path.join("data", dataset, "mapping.txt")
-    graph_path = os.path.join('data', dataset, 'graph')
-    os.makedirs(graph_path, exist_ok=True)
+    recipe_path = BASE_PATH / dataset
+    gt_path = recipe_path / 'groundTruth'
+    mapping_file = recipe_path / 'mapping.txt'
+    graph_path = recipe_path / 'graph'
     
-    # Create a dictionary to map actions to indices
+    # Ensure graph directory exists (parents=True prevents FileNotFoundError)
+    graph_path.mkdir(parents=True, exist_ok=True)
+    
+    # Create a dictionary to map actions to indices (from LOCAL mapping)
     actions_dict = dict()
     with open(mapping_file, 'r') as f:
         for line in f:
-            actions = line.strip().split(map_delimiter)
-            actions_dict[actions[1]] = int(actions[0])
+            if not line.strip(): continue
+            actions = line.strip().split(map_delimiter, 1)
+            # Depending on the local mapping format, it could be "ID ACTION" or "ACTION ID"
+            # Assuming "ID ACTION" based on original code structure
+            if len(actions) == 2:
+                actions_dict[actions[1].strip()] = int(actions[0].strip())
     
     # Initialize matrices for predecessor and successor relationships
     pre_mat = np.zeros([len(actions_dict), len(actions_dict)])
     suc_mat = np.zeros([len(actions_dict), len(actions_dict)])
     count = np.zeros([len(actions_dict)])
     
-    # Process each video in the ground truth path
-    for vid in tqdm.tqdm(os.listdir(gt_path)):
-        file_ptr = open(os.path.join(gt_path, vid), 'r')
-        content = file_ptr.read().split('\n')[:-1]
+    if not gt_path.exists():
+        print(f"⚠️ Missing directory: {gt_path}")
+        return
+
+    # Process each video in the local ground truth path
+    for vid in tqdm.tqdm(os.listdir(gt_path), desc=f"Graph {dataset}"):
+        if not vid.endswith('.txt'): continue
+
+        with open(gt_path / vid, 'r') as f:
+            content = f.read().split('\n')[:-1]
+        
         classes = np.zeros([len(content)], dtype=np.int32)
         
         # Map each action in the content to its corresponding index
         for i in range(len(classes)):
-            classes[i] = actions_dict[content[i]]
+            if content[i] in actions_dict:
+                classes[i] = actions_dict[content[i]]
+            else:
+                classes[i] = 0 # Fallback to background if not found
         
         # Filter out background classes
         classes_wo_bg = [a for a in classes if a not in bg_class]
@@ -52,46 +76,59 @@ def write_graph_from_transcripts(dataset, bg_class=[0], map_delimiter=' '):
             suc_mat[suc_action, pre_action] += 1
     
     # Normalize the matrices
-    # after normalization, pre_mat and suc_mat are not symmetric
     pre_mat = pre_mat / np.maximum(count[None, :], 1e-5)
     suc_mat = suc_mat / np.maximum(count[None, :], 1e-5)
     
     # Save the graph
     graph = {'matrix_pre': pre_mat, 'matrix_suc': suc_mat}
-    with open(os.path.join(graph_path, 'graph.pkl'), 'wb') as f:
+    with open(graph_path / 'graph.pkl', 'wb') as f:
         pickle.dump(graph, f)
     print(f"Finished writing graph for {dataset} in {graph_path}")
 
-def write_global_graph(datasets, base_path='data/EgoPER_action_segmentation', bg_class=[0], map_delimiter='|'):
-      # mapping globale (deve contenere tutte le 52 classi!)
-    mapping_file = os.path.join(base_path, "mapping_unified.txt")
 
+def write_global_graph(datasets, bg_class=[0], map_delimiter='|'):
+    """
+    Generate a unified graph by combining all recipes.
+    This function uses 'groundTruth_unified' and 'mapping_unified.txt'.
+    """
+    mapping_file = BASE_PATH / "mapping_unified.txt"
+
+    # 1. Load the Global Mapping
     actions_dict = dict()
     with open(mapping_file, 'r') as f:
         for line in f:
-            actions = line.strip().split(map_delimiter)
-            actions_dict[actions[1]] = int(actions[0])
+            if not line.strip(): continue
+            parts = line.strip().split(map_delimiter, 1)
+            if len(parts) == 2:
+                actions_dict[parts[1]] = int(parts[0])
 
     N = len(actions_dict)
-
     pre_mat = np.zeros([N, N])
     suc_mat = np.zeros([N, N])
     count = np.zeros([N])
 
-    # 🔥 loop su TUTTI i dataset
+    # 2. Iterate through all recipes in the unified ground truth
     for dataset in datasets:
-        gt_path = os.path.join(base_path, dataset, 'groundTruth')
+        gt_path = BASE_PATH / dataset / 'groundTruth_unified'
+        if not gt_path.exists(): 
+            continue
 
-        for vid in tqdm.tqdm(os.listdir(gt_path), desc=dataset):
-            with open(os.path.join(gt_path, vid), 'r') as f:
-                content = f.read().split('\n')[:-1]
+        for vid in tqdm.tqdm(os.listdir(gt_path), desc=f"Global Graph ({dataset})"):
+            if not vid.endswith('.txt'): continue
+                
+            with open(gt_path / vid, 'r') as f:
+                content = f.read().splitlines()
 
-            classes = np.array([actions_dict[c] for c in content], dtype=np.int32)
+            # Extract only numeric IDs from the "ID LABEL" format
+            classes_list = []
+            for line in content:
+                if not line.strip(): continue
+                classes_list.append(int(line.split(maxsplit=1)[0]))
+            
+            classes = np.array(classes_list, dtype=np.int32)
 
-            # rimuovi background
+            # Filter out background classes and compress repeated actions
             classes_wo_bg = [a for a in classes if a not in bg_class]
-
-            # transcript (no ripetizioni consecutive)
             transcript = [k for k, _ in groupby(classes_wo_bg)]
 
             for a in transcript:
@@ -101,26 +138,27 @@ def write_global_graph(datasets, base_path='data/EgoPER_action_segmentation', bg
                 pre_mat[pre_action, suc_action] += 1
                 suc_mat[suc_action, pre_action] += 1
 
-    # normalizzazione globale
+    # 3. Global normalization
     pre_mat = pre_mat / np.maximum(count[None, :], 1e-5)
     suc_mat = suc_mat / np.maximum(count[None, :], 1e-5)
 
     graph = {'matrix_pre': pre_mat, 'matrix_suc': suc_mat}
 
-    os.makedirs(os.path.join(base_path, "global_graph"), exist_ok=True)
-    with open(os.path.join(base_path, "global_graph", "graph.pkl"), 'wb') as f:
+    # 4. Save the global graph
+    global_graph_dir = BASE_PATH / "global_graph"
+    global_graph_dir.mkdir(parents=True, exist_ok=True)
+    
+    with open(global_graph_dir / "graph.pkl", 'wb') as f:
         pickle.dump(graph, f)
 
-    print("✅ Mega-grafo creato!")
+    print(f"\n✅ Global graph successfully created at: {global_graph_dir}/graph.pkl")
+
 
 if __name__ == '__main__':
-    datasets = ['coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla']
 
-    # grafi per singolo dataset
-    for dataset in datasets:
-        dataset_path = "EgoPER_action_segmentation/" + dataset
-        write_graph_from_transcripts(dataset_path, [0], '|')
 
-    # 🔥 mega-grafo UNA SOLA VOLTA
-    write_global_graph(datasets)
-
+    recipes_list = ['coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla']
+    for recipe in recipes_list:
+        # Note: If your local mapping files use a space instead of a pipe, change map_delimiter to ' '
+        write_graph_from_transcripts(recipe, bg_class=[0], map_delimiter='|')
+    write_global_graph(recipes_list)

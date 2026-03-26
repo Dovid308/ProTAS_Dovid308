@@ -82,8 +82,8 @@ with open(mapping_file, 'r') as file_ptr:
     actions = file_ptr.read().split('\n')[:-1]
 # Create action dictionary
 actions_dict = dict()
-map_delimiter = '|' if args.dataset in ['coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else ' '
-feature_transpose = True if args.dataset in ['coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else False
+map_delimiter = '|' if args.dataset in ['EgoPER_action_segmentation/coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else ' '
+feature_transpose = True if args.dataset in ['EgoPER_action_segmentation/coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else False
 for a in actions:
     actions_dict[a.split(map_delimiter)[1]] = int(a.split(map_delimiter)[0])
 
