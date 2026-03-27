@@ -100,8 +100,8 @@ map_delimiter = '|' # if args.dataset in ['EgoPER_action_segmentation/coffee', '
 feature_transpose = True #if args.dataset in ['EgoPER_action_segmentation', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else False
 for a in actions:
     actions_dict[a.split(map_delimiter)[1]] = int(a.split(map_delimiter)[0])
-
 num_classes = len(actions_dict)
+print(num_classes)  
 
 # Initialize trainer
 trainer = Trainer(
