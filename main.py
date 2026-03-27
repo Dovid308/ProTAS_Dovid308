@@ -41,22 +41,35 @@ bz = args.batch_size
 lr = args.lr 
 num_epochs = args.num_epochs
 
-# use the full temporal resolution @ 15fps
+
+
+##### DATASET RELTED PARAMETER
+
+#qui da modificare nel caso di altri dataset
+is_unified = False 
+if (args.dataset == "EgoPER_action_segmentation"):
+   is_unified=True
+
+
+# use the full temporal resolution @ 15fps -> actually we dont use salads
 sample_rate = 1
 # sample input features @ 15fps instead of 30 fps
 # for 50salads, and up-sample the output to 30 fps
 if args.dataset == "50salads":
     sample_rate = 2
 
-# File ptahs
+# File
 train_list = f"train.split{args.split}"
 test_list = f"test.split{args.split}"
 
-features_path = f"./data/{args.dataset}/features/"
-gt_path = f"./data/{args.dataset}/groundTruth/"
-progress_path = f"./data/{args.dataset}/progress/"
+if (is_unified):
+  mapping_file = f"./data/{args.dataset}/mapping_global.txt"
+else:
+    mapping_file = f"./data/{args.dataset}/mapping.txt"
+
 graph_path = f"./data/{args.dataset}/graph/graph.pkl"
-mapping_file = f"./data/{args.dataset}/mapping.txt"
+
+##logging results
 model_dir = f"./models/{args.exp_id}/{args.dataset}/split_{args.split}"
 results_dir = f"./results/{args.exp_id}/{args.dataset}/epoch{num_epochs}/split_{args.split}"
 
@@ -83,8 +96,8 @@ with open(mapping_file, 'r') as file_ptr:
     actions = file_ptr.read().split('\n')[:-1]
 # Create action dictionary
 actions_dict = dict()
-map_delimiter = '|' if args.dataset in ['EgoPER_action_segmentation/coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else ' '
-feature_transpose = True if args.dataset in ['EgoPER_action_segmentation', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else False
+map_delimiter = '|' # if args.dataset in ['EgoPER_action_segmentation/coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else ' '
+feature_transpose = True #if args.dataset in ['EgoPER_action_segmentation', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else False
 for a in actions:
     actions_dict[a.split(map_delimiter)[1]] = int(a.split(map_delimiter)[0])
 
@@ -100,14 +113,19 @@ trainer = Trainer(
 
 # Perform the specified action
 if args.action == "train":
-    batch_gen = BatchGenerator( f"data/{args.dataset}", num_classes, actions_dict, sample_rate, feature_transpose)
+    batch_gen = BatchGenerator( f"data/{args.dataset}", num_classes, actions_dict, sample_rate, feature_transpose, is_unified)
     batch_gen.read_data(train_list)
+
     trainer.train(model_dir, batch_gen, num_epochs=num_epochs, batch_size=bz, learning_rate=lr, device=device)
-    trainer.predict(model_dir, results_dir, features_path, test_list, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter)
-    evaluate(args.dataset, results_dir, args.split, args.exp_id, args.num_epochs)
+
+    trainer.predict(model_dir, results_dir, test_list, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter, is_unified)
+
+    evaluate(args.dataset, results_dir, args.split, args.exp_id, args.num_epochs, is_unified)
+    
 elif args.action == 'predict':
-    trainer.predict(model_dir, results_dir, features_path, test_list, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter)
+    trainer.predict(model_dir, results_dir, test_list, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter)
     evaluate(args.dataset, results_dir, args.split, args.exp_id, args.num_epochs)
 elif args.action == "predict_online":
-    trainer.predict_online(model_dir, results_dir, features_path, test_list, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter)
+
+    trainer.predict_online(model_dir, results_dir, test_list, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter)
     evaluate(args.dataset, results_dir, args.split, args.exp_id, args.num_epochs)

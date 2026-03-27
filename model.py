@@ -6,6 +6,7 @@ import copy
 import numpy as np
 import tqdm
 import pickle
+from utils.utils_paths import resolve_entry_paths
 
 # Define the MultiStageModel class
 class MultiStageModel(nn.Module):
@@ -187,7 +188,9 @@ class Trainer:
                                                               epoch_graph_loss / len(batch_gen.list_of_examples),
                                                               float(correct)/total))
 
-    def predict(self, model_dir, results_dir, features_path, vid_list_file, epoch, actions_dict, device, sample_rate, feature_transpose=False, map_delimiter=' '):
+  
+
+    def predict(self, model_dir, results_dir, vid_list_file, epoch, actions_dict, device, sample_rate, feature_transpose=False, map_delimiter=' ', dataset_root=None, is_unified=False):
         self.model.eval()
         with torch.no_grad():
             self.model.to(device)
@@ -196,7 +199,13 @@ class Trainer:
             list_of_vids = file_ptr.read().split('\n')[:-1]
             file_ptr.close()
             for vid in list_of_vids:
-                features = np.load(features_path + vid.split('.')[0] + '.npy')
+                # OLD:
+                # features = np.load(features_path + vid.split('.')[0] + '.npy')
+
+                # CHANGED: il path delle feature viene risolto dalla entry del bundle
+                _, features_path, _ = resolve_entry_paths(dataset_root, vid, is_unified)
+                features = np.load(features_path)
+
                 if feature_transpose:
                     features = features.T
                 features = features[:, ::sample_rate]
@@ -217,7 +226,7 @@ class Trainer:
                 f_ptr.write(map_delimiter.join(recognition))
                 f_ptr.close()
 
-    def predict_online(self, model_dir, results_dir, features_path, vid_list_file, epoch, actions_dict, device, sample_rate, feature_transpose=False, map_delimiter=' '):
+    def predict_online(self, model_dir, results_dir, vid_list_file, epoch, actions_dict, device, sample_rate, feature_transpose=False, map_delimiter=' ', dataset_root=None, is_unified=False):
         self.model.eval()
         with torch.no_grad():
             self.model.to(device)
@@ -226,7 +235,13 @@ class Trainer:
             list_of_vids = file_ptr.read().split('\n')[:-1]
             file_ptr.close()
             for vid in list_of_vids:
-                features = np.load(features_path + vid.split('.')[0] + '.npy')
+                # OLD:
+                # features = np.load(features_path + vid.split('.')[0] + '.npy')
+
+                # CHANGED: il path delle feature viene risolto dalla entry del bundle
+                _, features_path, _ = resolve_entry_paths(dataset_root, vid, is_unified)
+                features = np.load(features_path)
+
                 if feature_transpose:
                     features = features.T
                 features = features[:, ::sample_rate]

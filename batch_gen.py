@@ -4,7 +4,7 @@ from pathlib import Path
 import torch
 import numpy as np
 import random
-
+from utils.utils_paths import resolve_entry_paths
 
 class BatchGenerator:
     """
@@ -20,7 +20,7 @@ class BatchGenerator:
         gen.read_data("train.split1")   # oppure "test.split1", ecc.
     """
 
-    def __init__(self, dataset_root, num_classes, actions_dict, sample_rate, feature_transpose=False):
+    def __init__(self, dataset_root, num_classes, actions_dict, sample_rate, feature_transpose=False, is_unified=False):
         self.root = Path(dataset_root)
         self.num_classes = num_classes
         self.actions_dict = actions_dict
@@ -28,10 +28,12 @@ class BatchGenerator:
         self.feature_transpose = feature_transpose
 
         self.list_of_examples: list[str] = []
+
+
         self.index = 0
 
         # Auto-detection: global_splits esiste solo nella root unificata
-        self.is_unified = (self.root / "mapping_global.txt").exists() #se esiste quesdta cartelle vuol dire che il dataset è perlomeno globale
+        self.is_unified = is_unified
         print(f"[BatchGenerator] mode={'UNIFIED' if self.is_unified else 'LOCAL'} | root={self.root}")
 
     # ------------------------------------------------------------------
@@ -62,34 +64,7 @@ class BatchGenerator:
         random.shuffle(self.list_of_examples)
         print(f"[BatchGenerator] loaded {len(self.list_of_examples)} examples from {bundle_path}")
 
-    # ------------------------------------------------------------------
-    # Risoluzione path per singolo video
-    # ------------------------------------------------------------------
-
-    def _resolve_paths(self, entry: str) -> tuple[Path, Path, Path]:
-        """
-        Dato un entry del bundle (path relativo alla gt), restituisce
-        (gt_path, features_path, progress_path).
-
-        Local entry:   "groundTruth/coffee_u1_a1_normal_001.txt"
-        Unified entry: "coffee/groundTruth_unified/coffee_u1_a1_normal_001.txt"
-        """
-        entry_path = Path(entry)
-        vid_stem = entry_path.stem  # "coffee_u1_a1_normal_001"
-
-        if self.is_unified:
-            # Il primo componente del path è la ricetta (es. "coffee")
-            recipe = entry_path.parts[0]
-            recipe_root = self.root / recipe
-            gt_path       = self.root / entry
-            features_path = recipe_root / "features"       / f"{vid_stem}.npy"
-            progress_path = recipe_root / "progress_global" / f"{vid_stem}.npy"
-        else:
-            gt_path       = self.root / entry
-            features_path = self.root / "features" / f"{vid_stem}.npy"
-            progress_path = self.root / "progress"  / f"{vid_stem}.npy"
-
-        return gt_path, features_path, progress_path
+  
 
     # ------------------------------------------------------------------
     # Batch
@@ -102,7 +77,7 @@ class BatchGenerator:
         batch_input, batch_target, batch_progress = [], [], []
 
         for entry in batch:
-            gt_path, features_path, progress_path = self._resolve_paths(entry)
+            gt_path, features_path, progress_path = resolve_entry_paths(self.root, entry, self.is_unified)
 
             features        = np.load(features_path)
             progress_values = np.load(progress_path)

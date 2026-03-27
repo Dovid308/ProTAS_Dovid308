@@ -173,7 +173,7 @@ def write_global_progress(datasets, bg_class=[0], map_delimiter='|'):
 
     # 2. Iterate through all recipes in the unified ground truth
     for dataset in datasets:
-        gt_path = BASE_PATH / dataset / 'groundTruth_global'
+        gt_path = BASE_PATH / dataset / 'groundTruth'
         
         global_progress_dir = BASE_PATH / dataset / "progress_global"
     
@@ -232,18 +232,3 @@ if __name__ == '__main__':
     write_global_progress(recipes_list, bg_class=[0], map_delimiter='|')
 
 
-
-if __name__ == '__main__':
-    recipes_list = ['coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla']
-
-    print("="*60)
-    print("🎯 GENERATING INDIVIDUAL PROGRESS VALUES (Original Logic)")
-    print("="*60)
-    for recipe in recipes_list:
-        # Note: Depending on your local legacy mapping files, map_delimiter might need to be ' ' or '|'
-        write_progress_values(recipe, bg_class=[0], map_delimiter='|')
-
-    print("\n" + "="*60)
-    print("🌍 GENERATING UNIFIED GLOBAL PROGRESS VALUES")
-    print("="*60)
-    write_global_progress(recipes_list, bg_class=[0], map_delimiter='|')
