@@ -97,73 +97,139 @@ def f_score(recognized, ground_truth, overlap, bg_class=["background"]):
     fn = len(y_label) - sum(hits)
     return float(tp), float(fp), float(fn)
 
+    
+from utils.utils_paths import resolve_entry_paths
 
-def evaluate(dataset, result_dir, split, exp_id, num_epochs):
-    ground_truth_path = "./data/"+dataset+"/groundTruth/"
-    recog_path = result_dir #"./results/"+exp_id+"/"+dataset+"/epoch"+str(num_epochs)+"/split_"+split+"/"
-    file_list = "./data/"+dataset+"/splits/test.split"+split+".bundle"
-
-    list_of_videos = read_file(file_list).split('\n')[:-1]
-
-    overlap = [.1, .25, .5]
+def evaluate(dataset, result_dir, split, exp_id, num_epochs, dataset_root=None, is_unified=False, map_delimiter='|', bg_class=['BG']):
+    # Bundle path risolto
+    bundle_path, _, _ = resolve_entry_paths(dataset_root, f"splits/test.split{split}.bundle", is_unified)
+    list_of_videos = read_file(bundle_path).split('\n')[:-1]
+    
+    overlap = [.1, .25, .5] 
     tp, fp, fn = np.zeros(3), np.zeros(3), np.zeros(3)
-
-    correct = 0
-    total = 0
+    correct = 0     
+    total = 0      
     correct_wo_bg = 0
-    total_wo_bg = 0
-    edit = 0
-    map_delimiter = '|' if dataset in ['ptg', 'coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else ' '
-    bg_class = ['BG'] if dataset in ['ptg', 'coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else ['background']
-
+    total_wo_bg = 0 
+    edit = 0       
+    
+    # MODIFICATO: parametri da input (default BG, map_delimiter=' ')
+    # bg_class sempre ['BG']
+    
     for vid in list_of_videos:
         if not vid.endswith('.txt'):
             vid = vid + '.txt'
-        gt_file = ground_truth_path + vid
-        gt_content = read_file(gt_file).split('\n')[0:-1]
         
-        recog_file = os.path.join(recog_path, vid.split('.')[0])
+        gt_path, _, _ = resolve_entry_paths(dataset_root, vid, is_unified)
+        gt_content = gt_path.read_text().strip().splitlines()
+        
+        f_name = vid.split('/')[-1].split('.')[0]
+        recog_file = os.path.join(result_dir, f_name)
         recog_content = read_file(recog_file).split('\n')[1].split(map_delimiter)
-
+        
         for i in range(len(gt_content)):
             if gt_content[i] not in bg_class:
                 total_wo_bg += 1
                 if gt_content[i] == recog_content[i]:
                     correct_wo_bg += 1
+            
             total += 1
             if gt_content[i] == recog_content[i]:
                 correct += 1
+                
+            edit += edit_score(recog_content, gt_content, bg_class=bg_class)
         
-        edit += edit_score(recog_content, gt_content, bg_class=bg_class)
-
         for s in range(len(overlap)):
             tp1, fp1, fn1 = f_score(recog_content, gt_content, overlap[s], bg_class)
             tp[s] += tp1
             fp[s] += fp1
             fn[s] += fn1
-            
-    acc = 100*float(correct)/total
-    acc_wo_bg = 100*float(correct_wo_bg)/total_wo_bg
+    
+    acc = 100*float(correct)/total  
+    acc_wo_bg = 100*float(correct_wo_bg)/total_wo_bg  
     edit = (1.0*edit)/len(list_of_videos)
     res_list = [acc, acc_wo_bg, edit]
-
-    #print("Acc: %.4f" % (100*float(correct)/total))
-    #print('Edit: %.4f' % ((1.0*edit)/len(list_of_videos)))
+    
     for s in range(len(overlap)):
         precision = tp[s] / float(tp[s]+fp[s])
         recall = tp[s] / float(tp[s]+fn[s])
-    
         f1 = 2.0 * (precision*recall) / (precision+recall)
-
-        f1 = np.nan_to_num(f1)*100
-        #print('F1@%0.2f: %.4f' % (overlap[s], f1))
+        f1 = np.nan_to_num(f1)*100         
         res_list.append(f1)
+    
     print(exp_id, ' '.join(['{:.2f}'.format(r) for r in res_list]))
-    result_metrics = {'Acc': acc,  'Acc-bg': acc_wo_bg, 'Edit': edit, 
-                    'F1@10': res_list[-3], 'F1@25': res_list[-2], 'F1@50': res_list[-1]}
-    result_path = os.path.join(recog_path, 'split'+split+'.eval.json')
+    result_metrics = {'Acc': acc,  'Acc-bg': acc_wo_bg, 'Edit': edit,
+                      'F1@10': res_list[-3], 'F1@25': res_list[-2], 'F1@50': res_list[-1]}
+    result_path = os.path.join(result_dir, 'split'+split+'.eval.json')
     with open(result_path, 'w') as fw:
         json.dump(result_metrics, fw, indent=4)
+
+#def evaluate(dataset, result_dir, split, exp_id, num_epochs):
+#    ground_truth_path = "./data/"+dataset+"/groundTruth/"
+#    recog_path = result_dir #"./results/"+exp_id+"/"+dataset+"/epoch"+str(num_epochs)+"/split_"+split+"/"
+#    file_list = "./data/"+dataset+"/splits/test.split"+split+".bundle"
+#
+#    list_of_videos = read_file(file_list).split('\n')[:-1]
+#
+#    overlap = [.1, .25, .5]
+#    tp, fp, fn = np.zeros(3), np.zeros(3), np.zeros(3)
+#
+#    correct = 0
+#    total = 0
+#    correct_wo_bg = 0
+#    total_wo_bg = 0
+#    edit = 0
+#    map_delimiter = '|' if dataset in ['ptg', 'coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else ' '
+#    bg_class = ['BG'] if dataset in ['ptg', 'coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else ['background']
+#
+#    for vid in list_of_videos:
+#        if not vid.endswith('.txt'):
+#            vid = vid + '.txt'
+#        gt_file = ground_truth_path + vid
+#        gt_content = read_file(gt_file).split('\n')[0:-1]
+#        
+#        recog_file = os.path.join(recog_path, vid.split('.')[0])
+#        recog_content = read_file(recog_file).split('\n')[1].split(map_delimiter)
+#
+#        for i in range(len(gt_content)):
+#            if gt_content[i] not in bg_class:
+#                total_wo_bg += 1
+#                if gt_content[i] == recog_content[i]:
+#                    correct_wo_bg += 1
+#            total += 1
+#            if gt_content[i] == recog_content[i]:
+#                correct += 1
+#        
+#        edit += edit_score(recog_content, gt_content, bg_class=bg_class)
+#
+#        for s in range(len(overlap)):
+#            tp1, fp1, fn1 = f_score(recog_content, gt_content, overlap[s], bg_class)
+#            tp[s] += tp1
+#            fp[s] += fp1
+#            fn[s] += fn1
+#            
+#    acc = 100*float(correct)/total
+#    acc_wo_bg = 100*float(correct_wo_bg)/total_wo_bg
+#    edit = (1.0*edit)/len(list_of_videos)
+#    res_list = [acc, acc_wo_bg, edit]
+#
+#    #print("Acc: %.4f" % (100*float(correct)/total))
+#    #print('Edit: %.4f' % ((1.0*edit)/len(list_of_videos)))
+#    for s in range(len(overlap)):
+#        precision = tp[s] / float(tp[s]+fp[s])
+#        recall = tp[s] / float(tp[s]+fn[s])
+#    
+#        f1 = 2.0 * (precision*recall) / (precision+recall)
+#
+#        f1 = np.nan_to_num(f1)*100
+#        #print('F1@%0.2f: %.4f' % (overlap[s], f1))
+#        res_list.append(f1)
+#    print(exp_id, ' '.join(['{:.2f}'.format(r) for r in res_list]))
+#    result_metrics = {'Acc': acc,  'Acc-bg': acc_wo_bg, 'Edit': edit, 
+#                    'F1@10': res_list[-3], 'F1@25': res_list[-2], 'F1@50': res_list[-1]}
+#    result_path = os.path.join(recog_path, 'split'+split+'.eval.json')
+#    with open(result_path, 'w') as fw:
+#        json.dump(result_metrics, fw, indent=4)
 
 def main():
     parser = argparse.ArgumentParser()

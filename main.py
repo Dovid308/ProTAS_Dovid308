@@ -113,19 +113,26 @@ trainer = Trainer(
 
 # Perform the specified action
 if args.action == "train":
-    batch_gen = BatchGenerator( f"data/{args.dataset}", num_classes, actions_dict, sample_rate, feature_transpose, is_unified)
+    batch_gen = BatchGenerator(f"data/{args.dataset}", num_classes, actions_dict, sample_rate, feature_transpose, is_unified)
     batch_gen.read_data(train_list)
 
     trainer.train(model_dir, batch_gen, num_epochs=num_epochs, batch_size=bz, learning_rate=lr, device=device)
 
-    trainer.predict(model_dir, results_dir, test_list, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter, is_unified)
+    # MODIFICATO: evaluate con tutti i parametri
+    trainer.predict(model_dir, results_dir, test_list, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter, 
+                    dataset_root=f"data/{args.dataset}", is_unified=is_unified)  
 
-    evaluate(args.dataset, results_dir, args.split, args.exp_id, args.num_epochs, is_unified)
-    
+    evaluate(args.dataset, results_dir, args.split, args.exp_id, args.num_epochs, 
+             dataset_root=f"data/{args.dataset}", is_unified=is_unified, map_delimiter=map_delimiter, bg_class=['BG'])
+
 elif args.action == 'predict':
-    trainer.predict(model_dir, results_dir, test_list, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter)
-    evaluate(args.dataset, results_dir, args.split, args.exp_id, args.num_epochs)
-elif args.action == "predict_online":
+    trainer.predict(model_dir, results_dir, test_list, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter,
+                    dataset_root=f"data/{args.dataset}", is_unified=is_unified)  
+    evaluate(args.dataset, results_dir, args.split, args.exp_id, args.num_epochs, 
+             dataset_root=f"data/{args.dataset}", is_unified=is_unified, map_delimiter=map_delimiter, bg_class=['BG'])
 
-    trainer.predict_online(model_dir, results_dir, test_list, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter)
-    evaluate(args.dataset, results_dir, args.split, args.exp_id, args.num_epochs)
+elif args.action == "predict_online":
+    trainer.predict_online(model_dir, results_dir, test_list, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter,
+                           dataset_root=f"data/{args.dataset}", is_unified=is_unified)  
+    evaluate(args.dataset, results_dir, args.split, args.exp_id, args.num_epochs, 
+             dataset_root=f"data/{args.dataset}", is_unified=is_unified, map_delimiter=map_delimiter, bg_class=['BG'])
