@@ -195,7 +195,8 @@ class Trainer:
         with torch.no_grad():
             self.model.to(device)
             self.model.load_state_dict(torch.load(model_dir + "/epoch-" + str(epoch) + ".model"))
-            file_ptr = open(vid_list_file, 'r')
+            bundle_path = f"{dataset_root}/splits/{vid_list_file}.bundle"
+            file_ptr = open(bundle_path, 'r')
             list_of_vids = file_ptr.read().split('\n')[:-1]
             file_ptr.close()
             for vid in list_of_vids:
@@ -231,7 +232,8 @@ class Trainer:
         with torch.no_grad():
             self.model.to(device)
             self.model.load_state_dict(torch.load(model_dir + "/epoch-" + str(epoch) + ".model"))
-            file_ptr = open(vid_list_file, 'r')
+            bundle_path = f"{dataset_root}/splits/{vid_list_file}.bundle"
+            file_ptr = open(bundle_path, 'r')
             list_of_vids = file_ptr.read().split('\n')[:-1]
             file_ptr.close()
             for vid in list_of_vids:

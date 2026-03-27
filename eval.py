@@ -102,7 +102,7 @@ from utils.utils_paths import resolve_entry_paths
 
 def evaluate(dataset, result_dir, split, exp_id, num_epochs, dataset_root=None, is_unified=False, map_delimiter='|', bg_class=['BG']):
     # Bundle path risolto
-    bundle_path, _, _ = resolve_entry_paths(dataset_root, f"splits/test.split{split}.bundle", is_unified)
+    bundle_path = f"{dataset_root}/splits/test.split{split}.bundle"
     list_of_videos = read_file(bundle_path).split('\n')[:-1]
     
     overlap = [.1, .25, .5] 
