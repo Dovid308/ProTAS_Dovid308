@@ -124,3 +124,126 @@ class DilatedResidualLayer(nn.Module):
         out = self.conv_1x1(out)
         out = self.dropout(out)
         return (x + out) * mask[:, 0:1, :]
+
+
+# Define the Trainer class
+class Trainer:
+    def __init__(self, num_blocks, num_layers, num_f_maps, dim, num_classes, causal, logger, progress_lw=1,
+                 use_graph=True, graph_lw=0.1, init_graph_path='', learnable=True):
+        self.model = MultiStageModel(num_blocks, num_layers, num_f_maps, dim, num_classes, causal, 
+                     use_graph=use_graph, init_graph_path=init_graph_path, learnable=learnable)
+        self.ce = nn.CrossEntropyLoss(ignore_index=-100)
+        self.mse = nn.MSELoss(reduction='none')
+        self.num_classes = num_classes
+        self.progress_lw = progress_lw
+        self.use_graph = use_graph
+        self.graph_lw = graph_lw
+        self.logger = logger
+
+    def train(self, save_dir, batch_gen, num_epochs, batch_size, learning_rate, device):
+        self.model.train()
+        self.model.to(device)
+        optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
+        for epoch in range(num_epochs):
+            epoch_loss = 0
+            epoch_progress_loss = 0
+            epoch_graph_loss = 0
+            correct = 0
+            total = 0
+            while batch_gen.has_next():
+                batch_input, batch_target, batch_progress_target, mask = batch_gen.next_batch(batch_size)
+                batch_input, batch_target, batch_progress_target, mask = batch_input.to(device), batch_target.to(device), batch_progress_target.to(device), mask.to(device)
+                optimizer.zero_grad()
+                predictions, progress_predictions = self.model(batch_input, mask)
+
+                loss = 0
+                progress_loss = 0
+                for p, progress_p in zip(predictions, progress_predictions):
+                    loss += self.ce(p.transpose(2, 1).contiguous().view(-1, self.num_classes), batch_target.view(-1))
+                    loss += 0.15 * torch.mean(torch.clamp(self.mse(F.log_softmax(p[:, :, 1:], dim=1), F.log_softmax(p.detach()[:, :, :-1], dim=1)), min=0, max=16) * mask[:, :, 1:])
+                    progress_loss += self.mse(progress_p, batch_progress_target).mean()
+
+                loss += self.progress_lw * progress_loss
+                epoch_progress_loss += self.progress_lw * progress_loss.item()
+
+                graph_loss = self.model.graph_learner(predictions[-1], progress_predictions[-1])
+                loss += self.graph_lw * graph_loss
+                epoch_graph_loss += self.graph_lw * graph_loss.item()
+                epoch_loss += loss.item()
+                loss.backward()
+                optimizer.step()
+
+                _, predicted = torch.max(predictions[-1].data, 1)
+                correct += ((predicted == batch_target).float() * mask[:, 0, :].squeeze(1)).sum().item()
+                total += torch.sum(mask[:, 0, :]).item()
+
+            batch_gen.reset()
+            if (epoch + 1) % 5 == 0:
+                torch.save(self.model.state_dict(), save_dir + "/epoch-" + str(epoch + 1) + ".model")
+                torch.save(optimizer.state_dict(), save_dir + "/epoch-" + str(epoch + 1) + ".opt")
+            self.logger.info("[epoch %d]: epoch loss = %f, progress loss = %f, graph loss = %f, acc = %f" % (epoch + 1, 
+                                                              epoch_loss / len(batch_gen.list_of_examples),
+                                                              epoch_progress_loss / len(batch_gen.list_of_examples),
+                                                              epoch_graph_loss / len(batch_gen.list_of_examples),
+                                                              float(correct)/total))
+
+    def predict(self, model_dir, results_dir, features_path, vid_list_file, epoch, actions_dict, device, sample_rate, feature_transpose=False, map_delimiter=' '):
+        self.model.eval()
+        with torch.no_grad():
+            self.model.to(device)
+            self.model.load_state_dict(torch.load(model_dir + "/epoch-" + str(epoch) + ".model"))
+            file_ptr = open(vid_list_file, 'r')
+            list_of_vids = file_ptr.read().split('\n')[:-1]
+            file_ptr.close()
+            for vid in list_of_vids:
+                features = np.load(features_path + vid.split('.')[0] + '.npy')
+                if feature_transpose:
+                    features = features.T
+                features = features[:, ::sample_rate]
+                input_x = torch.tensor(features, dtype=torch.float)
+                input_x.unsqueeze_(0)
+                input_x = input_x.to(device)
+                predictions, progress_predictions = self.model(input_x, torch.ones(input_x.size(), device=device))
+                final_predictions = self.model.graph_learner.inference(predictions[-1], progress_predictions[-1])
+                _, predicted = torch.max(final_predictions.data, 1)
+
+                predicted = predicted.squeeze()
+                recognition = []
+                for i in range(len(predicted)):
+                    recognition = np.concatenate((recognition, [list(actions_dict.keys())[list(actions_dict.values()).index(predicted[i].item())]]*sample_rate))
+                f_name = vid.split('/')[-1].split('.')[0]
+                f_ptr = open(results_dir + "/" + f_name, "w")
+                f_ptr.write("### Frame level recognition: ###\n")
+                f_ptr.write(map_delimiter.join(recognition))
+                f_ptr.close()
+
+    def predict_online(self, model_dir, results_dir, features_path, vid_list_file, epoch, actions_dict, device, sample_rate, feature_transpose=False, map_delimiter=' '):
+        self.model.eval()
+        with torch.no_grad():
+            self.model.to(device)
+            self.model.load_state_dict(torch.load(model_dir + "/epoch-" + str(epoch) + ".model"))
+            file_ptr = open(vid_list_file, 'r')
+            list_of_vids = file_ptr.read().split('\n')[:-1]
+            file_ptr.close()
+            for vid in list_of_vids:
+                features = np.load(features_path + vid.split('.')[0] + '.npy')
+                if feature_transpose:
+                    features = features.T
+                features = features[:, ::sample_rate]
+                input_x = torch.tensor(features, dtype=torch.float)
+                input_x.unsqueeze_(0)
+                input_x = input_x.to(device)
+                n_frames = input_x.shape[-1]
+                recognition = []
+                for frame_i in tqdm.tqdm(range(n_frames)):
+                    curr_input_x = input_x[:, :, :frame_i+1]
+                    predictions, progress_predictions = self.model(curr_input_x, torch.ones(curr_input_x.size(), device=device))
+                    final_predictions = self.model.graph_learner.inference(predictions[-1], progress_predictions[-1])
+                    _, predicted = torch.max(final_predictions.data, 1)
+                    predicted = predicted.squeeze(0)
+                    recognition = np.concatenate((recognition, [list(actions_dict.keys())[list(actions_dict.values()).index(predicted[-1].item())]]*sample_rate))
+                f_name = vid.split('/')[-1].split('.')[0]
+                f_ptr = open(results_dir + "/" + f_name, "w")
+                f_ptr.write("### Frame level recognition: ###\n")
+                f_ptr.write(map_delimiter.join(recognition))
+                f_ptr.close()

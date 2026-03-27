@@ -89,9 +89,9 @@ def write_graph_from_transcripts(dataset, bg_class=[0], map_delimiter=' '):
 def write_global_graph(datasets, bg_class=[0], map_delimiter='|'):
     """
     Generate a unified graph by combining all recipes.
-    This function uses 'groundTruth_unified' and 'mapping_unified.txt'.
+    This function uses 'groundTruth_global' and 'mapping_global.txt'.
     """
-    mapping_file = BASE_PATH / "mapping_unified.txt"
+    mapping_file = BASE_PATH / "mapping_global.txt"
 
     # 1. Load the Global Mapping
     actions_dict = dict()
@@ -100,7 +100,7 @@ def write_global_graph(datasets, bg_class=[0], map_delimiter='|'):
             if not line.strip(): continue
             parts = line.strip().split(map_delimiter, 1)
             if len(parts) == 2:
-                actions_dict[parts[1]] = int(parts[0])
+                actions_dict[parts[1].strip()] = int(parts[0].strip())
 
     N = len(actions_dict)
     pre_mat = np.zeros([N, N])
@@ -109,7 +109,7 @@ def write_global_graph(datasets, bg_class=[0], map_delimiter='|'):
 
     # 2. Iterate through all recipes in the unified ground truth
     for dataset in datasets:
-        gt_path = BASE_PATH / dataset / 'groundTruth_unified'
+        gt_path = BASE_PATH / dataset / 'groundTruth_global'
         if not gt_path.exists(): 
             continue
 
@@ -119,17 +119,20 @@ def write_global_graph(datasets, bg_class=[0], map_delimiter='|'):
             with open(gt_path / vid, 'r') as f:
                 content = f.read().splitlines()
 
-            # Extract only numeric IDs from the "ID LABEL" format
+            # Convert action names to numeric IDs using the global mapping
             classes_list = []
             for line in content:
                 if not line.strip(): continue
-                classes_list.append(int(line.split(maxsplit=1)[0]))
+                if line.strip() in actions_dict:
+                    classes_list.append(actions_dict[line.strip()])
+                else:
+                    classes_list.append(0)
             
             classes = np.array(classes_list, dtype=np.int32)
 
             # Filter out background classes and compress repeated actions
             classes_wo_bg = [a for a in classes if a not in bg_class]
-            transcript = [k for k, _ in groupby(classes_wo_bg)]
+            transcript = [k for k, v in groupby(classes_wo_bg)]
 
             for a in transcript:
                 count[a] += 1
