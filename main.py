@@ -48,14 +48,15 @@ sample_rate = 1
 if args.dataset == "50salads":
     sample_rate = 2
 
-# File paths
-vid_list_file = f"./data/{args.dataset}/splits/train.split{args.split}.bundle"
-vid_list_file_tst = f"./data/{args.dataset}/splits/test.split{args.split}.bundle"
+# File ptahs
+train_list = f"train.split{args.split}"
+test_list = f"test.split{args.split}"
+
 features_path = f"./data/{args.dataset}/features/"
 gt_path = f"./data/{args.dataset}/groundTruth/"
 progress_path = f"./data/{args.dataset}/progress/"
-graph_path = f"./data/{args.dataset}/graph/graph.pkl"
-mapping_file = f"./data/{args.dataset}/mapping.txt"
+graph_path = f"./data/{args.dataset}/global_graph/graph.pkl"
+mapping_file = f"./data/{args.dataset}/mapping_unified.txt"
 model_dir = f"./models/{args.exp_id}/{args.dataset}/split_{args.split}"
 results_dir = f"./results/{args.exp_id}/{args.dataset}/epoch{num_epochs}/split_{args.split}"
 
@@ -82,8 +83,8 @@ with open(mapping_file, 'r') as file_ptr:
     actions = file_ptr.read().split('\n')[:-1]
 # Create action dictionary
 actions_dict = dict()
-map_delimiter = '|' if args.dataset in ['EgoPER_action_segmentation/coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else ' '
-feature_transpose = True if args.dataset in ['EgoPER_action_segmentation/coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else False
+map_delimiter = '|' if args.dataset in ['EgoPER_action_segmentation', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else ' '
+feature_transpose = True if args.dataset in ['EgoPER_action_segmentation', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else False
 for a in actions:
     actions_dict[a.split(map_delimiter)[1]] = int(a.split(map_delimiter)[0])
 
@@ -99,14 +100,14 @@ trainer = Trainer(
 
 # Perform the specified action
 if args.action == "train":
-    batch_gen = BatchGenerator(num_classes, actions_dict, gt_path, features_path, progress_path, sample_rate, feature_transpose)
-    batch_gen.read_data(vid_list_file)
+    batch_gen = BatchGenerator( f"data/{args.dataset}", num_classes, actions_dict, sample_rate, feature_transpose)
+    batch_gen.read_data(train_list)
     trainer.train(model_dir, batch_gen, num_epochs=num_epochs, batch_size=bz, learning_rate=lr, device=device)
-    trainer.predict(model_dir, results_dir, features_path, vid_list_file_tst, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter)
+    trainer.predict(model_dir, results_dir, features_path, test_list, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter)
     evaluate(args.dataset, results_dir, args.split, args.exp_id, args.num_epochs)
 elif args.action == 'predict':
-    trainer.predict(model_dir, results_dir, features_path, vid_list_file_tst, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter)
+    trainer.predict(model_dir, results_dir, features_path, test_list, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter)
     evaluate(args.dataset, results_dir, args.split, args.exp_id, args.num_epochs)
 elif args.action == "predict_online":
-    trainer.predict_online(model_dir, results_dir, features_path, vid_list_file_tst, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter)
+    trainer.predict_online(model_dir, results_dir, features_path, test_list, num_epochs, actions_dict, device, sample_rate, feature_transpose, map_delimiter)
     evaluate(args.dataset, results_dir, args.split, args.exp_id, args.num_epochs)
