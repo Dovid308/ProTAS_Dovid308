@@ -31,7 +31,7 @@ class BatchGenerator:
         self.index = 0
 
         # Auto-detection: global_splits esiste solo nella root unificata
-        self.is_unified = (self.root / "global_splits").exists() #se esiste quesdta cartelle vuol dire che il dataset è perlomeno globale
+        self.is_unified = (self.root / "mapping_global.txt").exists() #se esiste quesdta cartelle vuol dire che il dataset è perlomeno globale
         print(f"[BatchGenerator] mode={'UNIFIED' if self.is_unified else 'LOCAL'} | root={self.root}")
 
     # ------------------------------------------------------------------
@@ -55,7 +55,7 @@ class BatchGenerator:
         """
         
         filename = split if split.endswith(".bundle") else f"{split}.bundle"
-        splits_dir = "global_splits" if self.is_unified else "splits"
+        splits_dir = "splits"
         bundle_path = self.root / splits_dir / filename
 
         self.list_of_examples = bundle_path.read_text().strip().splitlines()
@@ -83,7 +83,7 @@ class BatchGenerator:
             recipe_root = self.root / recipe
             gt_path       = self.root / entry
             features_path = recipe_root / "features"       / f"{vid_stem}.npy"
-            progress_path = recipe_root / "progress_unified" / f"{vid_stem}.npy"
+            progress_path = recipe_root / "progress_global" / f"{vid_stem}.npy"
         else:
             gt_path       = self.root / entry
             features_path = self.root / "features" / f"{vid_stem}.npy"

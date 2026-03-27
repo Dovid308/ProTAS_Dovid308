@@ -56,7 +56,7 @@ features_path = f"./data/{args.dataset}/features/"
 gt_path = f"./data/{args.dataset}/groundTruth/"
 progress_path = f"./data/{args.dataset}/progress/"
 graph_path = f"./data/{args.dataset}/graph/graph.pkl"
-mapping_file = f"./data/{args.dataset}/mapping_global.txt"
+mapping_file = f"./data/{args.dataset}/mapping.txt"
 model_dir = f"./models/{args.exp_id}/{args.dataset}/split_{args.split}"
 results_dir = f"./results/{args.exp_id}/{args.dataset}/epoch{num_epochs}/split_{args.split}"
 
@@ -83,7 +83,7 @@ with open(mapping_file, 'r') as file_ptr:
     actions = file_ptr.read().split('\n')[:-1]
 # Create action dictionary
 actions_dict = dict()
-map_delimiter = '|' if args.dataset in ['EgoPER_action_segmentation', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else ' '
+map_delimiter = '|' if args.dataset in ['EgoPER_action_segmentation/coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else ' '
 feature_transpose = True if args.dataset in ['EgoPER_action_segmentation', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else False
 for a in actions:
     actions_dict[a.split(map_delimiter)[1]] = int(a.split(map_delimiter)[0])
