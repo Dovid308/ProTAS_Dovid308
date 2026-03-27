@@ -145,7 +145,7 @@ def write_global_graph(datasets, bg_class=[0], map_delimiter='|'):
     graph = {'matrix_pre': pre_mat, 'matrix_suc': suc_mat}
 
     # 4. Save the global graph
-    global_graph_dir = BASE_PATH / "global_graph"
+    global_graph_dir = BASE_PATH / "graph"
     global_graph_dir.mkdir(parents=True, exist_ok=True)
     
     with open(global_graph_dir / "graph.pkl", 'wb') as f:

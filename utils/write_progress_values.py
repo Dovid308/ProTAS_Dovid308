@@ -97,9 +97,9 @@ def write_global_progress(datasets, bg_class=[0], map_delimiter='|'):
 
     # 2. Iterate through all recipes in the unified ground truth
     for dataset in datasets:
-        gt_path = BASE_PATH / dataset / 'groundTruth_unified'
+        gt_path = BASE_PATH / dataset / 'groundTruth_global'
         
-        global_progress_dir = BASE_PATH / dataset / "progress_unified"
+        global_progress_dir = BASE_PATH / dataset / "progress_global"
     
         global_progress_dir.mkdir(parents=True, exist_ok=True)
         if not gt_path.exists(): 
@@ -133,9 +133,9 @@ def write_global_progress(datasets, bg_class=[0], map_delimiter='|'):
                 cur_frame += segment_length
             
             # Save progress values to the unified global directory
-            np.save(BASE_PATH / dataset / "progress_unified" / (vid[:-4] + '.npy'), progress_values)
+            np.save(BASE_PATH / dataset / "progress_global" / (vid[:-4] + '.npy'), progress_values)
             
-    print(f"\n✅ Global progress values successfully created in {recipe}/globalprogress")
+    print(f"\n✅ Global progress values successfully created in {recipe}/progress_global")
 
 
 if __name__ == '__main__':
