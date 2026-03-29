@@ -108,8 +108,10 @@ trainer = Trainer(
     num_stages, num_layers, num_f_maps, features_dim, num_classes, 
     causal=args.causal, logger=logger, progress_lw=args.progress_lw, 
     use_graph=args.graph, graph_lw=args.graph_lw, init_graph_path=graph_path, 
-    learnable=args.learnable_graph
+    learnable=args.learnable_graph,
+    backbone='mstcn',
 )
+
 
 # Perform the specified action
 if args.action == "train":

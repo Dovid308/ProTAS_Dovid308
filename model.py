@@ -80,6 +80,17 @@ class TaskGraphLearner(nn.Module):
         logits = cls - self.eta * (alpha_pre + alpha_suc)
         return logits
 
+class APPModule(nn.Module):
+    def __init__(self, num_f_maps, num_classes, causal=False):
+        super(APPModule, self).__init__()
+        self.gru = nn.GRU(num_f_maps, num_f_maps, num_layers=1,
+                          batch_first=True, bidirectional=not causal)
+        self.conv = nn.Conv1d(num_f_maps * (1 if causal else 2), num_classes, 1)
+
+    def forward(self, feature, mask):
+        out, _ = self.gru(feature.permute(0, 2, 1))
+        return self.conv(out.permute(0, 2, 1)) * mask[:, 0:1, :]
+
 # Define the SingleStageModel class
 class SingleStageModel(nn.Module):
     def __init__(self, num_layers, num_f_maps, dim, num_classes, causal=False):
@@ -87,9 +98,10 @@ class SingleStageModel(nn.Module):
         self.conv_1x1 = nn.Conv1d(dim, num_f_maps, 1)
         self.layers = nn.ModuleList([copy.deepcopy(DilatedResidualLayer(2 ** i, num_f_maps, num_f_maps, causal=causal)) for i in range(num_layers)])
         self.conv_out = nn.Conv1d(num_f_maps, num_classes, 1)
+        
         ### Action Progress Prediction (APP) module
-        self.gru_app = nn.GRU(num_f_maps, num_f_maps, num_layers=1, batch_first=True, bidirectional=not causal)
-        self.conv_app = nn.Conv1d(num_f_maps*2 if not causal else num_f_maps*2 if not causal else num_f_maps*2 if not causal else num_f_maps, num_classes, 1)
+        self.app = APPModule(num_f_maps, num_classes, causal)
+      
         self.prob_fusion = ProbabilityProgressFusionModel(num_classes)
 
     def forward(self, x, mask):
@@ -97,9 +109,7 @@ class SingleStageModel(nn.Module):
         for layer in self.layers:
             out = layer(out, mask)
         prob_out = self.conv_out(out) * mask[:, 0:1, :]
-        progress_out, _ = self.gru_app(out.permute(0, 2, 1))
-        progress_out = progress_out.permute(0, 2, 1)
-        progress_out = self.conv_app(progress_out) * mask[:, 0:1, :]
+        progress_out = self.app(out, mask)
         out = self.prob_fusion(prob_out, progress_out)
         out = out * mask[:, 0:1, :]
         return out, progress_out
@@ -127,13 +137,102 @@ class DilatedResidualLayer(nn.Module):
         return (x + out) * mask[:, 0:1, :]
 
 
+
+from utils.asformer import Encoder, Decoder, exponential_descrease
+
+
+class ASFormerPROTAS(nn.Module):
+    """
+    ASFormer + PROTAS: APP module e fusion su ogni stage.
+    Paper: 1 encoder + 3 decoder, 9 layer ciascuno.
+
+    #Opzione B — modifichi construct_window_mask in asformer.py per supportare la causal mask, e passi il flag fino in fondo. Questo replica correttamente il paper.
+    #direi che devo ancora fare questo no 
+    """
+    def __init__(self, num_decoders, num_layers, r1, r2, num_f_maps,
+                 input_dim, num_classes, channel_masking_rate, causal=False,
+                 use_graph=True, init_graph_path='', learnable=True):
+        super(ASFormerPROTAS, self).__init__()
+        num_stages = num_decoders + 1
+ 
+        self.encoder = Encoder(
+            num_layers,
+            r1,
+            r2,
+            num_f_maps,
+            input_dim,
+            num_classes,
+            channel_masking_rate,
+            att_type='sliding_att',
+            alpha=1,
+            causal=causal
+        )
+        
+        self.decoders = nn.ModuleList([
+            copy.deepcopy(
+                Decoder(
+                    num_layers,
+                    r1,
+                    r2,
+                    num_f_maps,
+                    num_classes,
+                    num_classes,
+                    att_type='sliding_att',
+                    alpha=exponential_descrease(s),
+                    causal=causal
+                )
+            )
+            for s in range(num_decoders)
+        ])
+        self.app_modules = nn.ModuleList([
+            APPModule(num_f_maps, num_classes, causal) for _ in range(num_stages)
+        ])
+        self.fusion_modules = nn.ModuleList([
+            ProbabilityProgressFusionModel(num_classes) for _ in range(num_stages)
+        ])
+        self.use_graph = use_graph
+        if use_graph:
+            self.graph_learner = TaskGraphLearner(init_graph_path, learnable)
+ 
+    def forward(self, x, mask):
+        out, feature = self.encoder(x, mask)
+        progress = self.app_modules[0](feature, mask)
+        out = self.fusion_modules[0](out, progress) * mask[:, 0:1, :]
+ 
+        outputs = out.unsqueeze(0)
+        outputs_progress = progress.unsqueeze(0)
+ 
+        for i, decoder in enumerate(self.decoders):
+            out, feature = decoder(F.softmax(out, dim=1) * mask[:, 0:1, :],
+                                   feature * mask[:, 0:1, :], mask)
+            progress = self.app_modules[i + 1](feature, mask)
+            out = self.fusion_modules[i + 1](out, progress) * mask[:, 0:1, :]
+            outputs = torch.cat((outputs, out.unsqueeze(0)), dim=0)
+            outputs_progress = torch.cat((outputs_progress, progress.unsqueeze(0)), dim=0)
+ 
+        return outputs, outputs_progress
+
+
+
+
+
 # Define the Trainer class
 class Trainer:
     def __init__(self, num_blocks, num_layers, num_f_maps, dim, num_classes, causal, logger, progress_lw=1,
-                 use_graph=True, graph_lw=0.1, init_graph_path='', learnable=True):
-        self.model = MultiStageModel(num_blocks, num_layers, num_f_maps, dim, num_classes, causal, 
-                     use_graph=use_graph, init_graph_path=init_graph_path, learnable=learnable)
-        self.ce = nn.CrossEntropyLoss(ignore_index=-100)
+                 use_graph=True, graph_lw=0.1, init_graph_path='', learnable=True, backbone='mstcn',
+                 r1=2, r2=2, channel_masking_rate=0.3):
+        if backbone == 'mstcn':
+            self.model = MultiStageModel(num_blocks, num_layers, num_f_maps, dim, num_classes, causal,
+                         use_graph=use_graph, init_graph_path=init_graph_path, learnable=learnable)
+        elif backbone == 'asformer':
+            self.model = ASFormerPROTAS(num_decoders=num_blocks - 1, num_layers=num_layers, r1=r1, r2=r2,
+                         num_f_maps=num_f_maps, input_dim=dim, num_classes=num_classes,
+                         channel_masking_rate=channel_masking_rate, causal=causal,
+                         use_graph=use_graph, init_graph_path=init_graph_path, learnable=learnable)
+        else:
+            raise ValueError(f"backbone non supportato: {backbone!r}, scegli 'mstcn' o 'asformer'")
+
+        self.ce = nn.CrossEntropyLoss(ignore_index=-100)       
         self.mse = nn.MSELoss(reduction='none')
         self.num_classes = num_classes
         self.progress_lw = progress_lw
@@ -264,3 +363,4 @@ class Trainer:
                 f_ptr.write("### Frame level recognition: ###\n")
                 f_ptr.write(map_delimiter.join(recognition))
                 f_ptr.close()
+
