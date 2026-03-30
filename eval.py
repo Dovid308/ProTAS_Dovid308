@@ -100,7 +100,7 @@ def f_score(recognized, ground_truth, overlap, bg_class=["background"]):
     
 from utils.utils_paths import resolve_entry_paths
 
-def evaluate(dataset, result_dir, split, exp_id, num_epochs, dataset_root=None, is_unified=False, map_delimiter='|', bg_class=['BG']):
+def evaluate(result_dir, split, dataset_root=None, is_unified=False, map_delimiter='|', bg_class=['BG']):
     # Bundle path risolto
     bundle_path = f"{dataset_root}/splits/test.split{split}.bundle"
     list_of_videos = read_file(bundle_path).split('\n')[:-1]
@@ -115,6 +115,9 @@ def evaluate(dataset, result_dir, split, exp_id, num_epochs, dataset_root=None, 
     
     # MODIFICATO: parametri da input (default BG, map_delimiter=' ')
     # bg_class sempre ['BG']
+
+    # le predizioni stanno nella sottocartella predict/
+    predict_dir = os.path.join(result_dir, "predict")
     
     for vid in list_of_videos:
         if not vid.endswith('.txt'):
@@ -124,7 +127,8 @@ def evaluate(dataset, result_dir, split, exp_id, num_epochs, dataset_root=None, 
         gt_content = gt_path.read_text().strip().splitlines()
         
         f_name = vid.split('/')[-1].split('.')[0]
-        recog_file = os.path.join(result_dir, f_name)
+        # MODIFICATO: legge da predict_dir invece che da result_dir
+        recog_file = os.path.join(predict_dir, f_name)
         recog_content = read_file(recog_file).split('\n')[1].split(map_delimiter)
         
         for i in range(len(gt_content)):
@@ -137,7 +141,8 @@ def evaluate(dataset, result_dir, split, exp_id, num_epochs, dataset_root=None, 
             if gt_content[i] == recog_content[i]:
                 correct += 1
                 
-            edit += edit_score(recog_content, gt_content, bg_class=bg_class)
+        # BUGFIX: edit_score calcolato una volta per video, non dentro il loop per frame
+        edit += edit_score(recog_content, gt_content, bg_class=bg_class)
         
         for s in range(len(overlap)):
             tp1, fp1, fn1 = f_score(recog_content, gt_content, overlap[s], bg_class)
@@ -157,9 +162,10 @@ def evaluate(dataset, result_dir, split, exp_id, num_epochs, dataset_root=None, 
         f1 = np.nan_to_num(f1)*100         
         res_list.append(f1)
     
-    print(exp_id, ' '.join(['{:.2f}'.format(r) for r in res_list]))
+    print("Result:", ' '.join(['{:.2f}'.format(r) for r in res_list]))
     result_metrics = {'Acc': acc,  'Acc-bg': acc_wo_bg, 'Edit': edit,
                       'F1@10': res_list[-3], 'F1@25': res_list[-2], 'F1@50': res_list[-1]}
+    # MODIFICATO: JSON salvato in result_dir (expdir), non in predict_dir
     result_path = os.path.join(result_dir, 'split'+split+'.eval.json')
     with open(result_path, 'w') as fw:
         json.dump(result_metrics, fw, indent=4)

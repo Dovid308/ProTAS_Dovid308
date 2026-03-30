@@ -21,37 +21,39 @@ source /conf/shared-software/anaconda/etc/profile.d/conda.sh
 conda activate protas_new  # o il tuo env
 echo "Conda: $(conda info --envs | grep '*' ) | Python: $(python --version)"
 
-# 1. Unzip dataset
-echo "1. Unzipping dataset..."
-if [ -f "data/gtea_dataset.zip" ]; then
-    unzip -q -o data/gtea_dataset.zip -d data/
-    mv data/content/gtea data/gtea
-    rm -rf data/content/  # pulisce la cartella content vuota
-    echo "Dataset unzipped: $(du -sh data/ | cut -f1)"
-else
-    echo "ERROR: gtea_dataset.zip not found!"
-    exit 1
-fi
-
-# 2. Build graph/progress
-echo "2. Building graph & progress..."
-if [ -f "utils/write_graph.py" ]; then
-    python utils/write_graph.py
-fi
-if [ -f "utils/write_progress_values.py" ]; then
+## 1. Unzip dataset
+#echo "1. Unzipping dataset..."
+#if [ -f "data/gtea_dataset.zip" ]; then
+#    unzip -q -o data/gtea_dataset.zip -d data/
+#    mv data/content/gtea data/gtea
+#    rm -rf data/content/  # pulisce la cartella content vuota
+#    echo "Dataset unzipped: $(du -sh data/ | cut -f1)"
+#else
+#    echo "ERROR: gtea_dataset.zip not found!"
+#    exit 1
+#fi
+#
+## 2. Build graph/progress
+#echo "2. Building graph & progress..."
+#if [ -f "utils/write_graph.py" ]; then
+#    python utils/write_graph.py
+#fi
+if #[ -f "utils/write_progress_values.py" ]; then
     python utils/write_progress_values.py
-fi
-
-# 3. Training (5 epochs, CPU only)
+#fi
+#
+## 3. Training (5 epochs, CPU only)
 echo "3. Training 5 epochs (CPU)..."
+
+#it should work even like this
 python main.py \
   --action train \
-  --dataset gtea \
+  --dataset EgoPER_action_segmentation \
   --split 1 \
   --exp_id protas_debug \
   --graph --learnable_graph \
   --num_epochs 5 \
-  --batch_size 4 \
+  --batch_size 1 \
   --lr 0.001
 
 echo "SUMMARY:"

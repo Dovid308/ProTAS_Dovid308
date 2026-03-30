@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
+import os
 import copy
 import numpy as np
 import tqdm
@@ -214,36 +215,29 @@ class ASFormerPROTAS(nn.Module):
 
 
 
-
-
-# Define the Trainer class
-class Trainer:
-    def __init__(self, num_blocks, num_layers, num_f_maps, dim, num_classes, causal, logger, progress_lw=1,
-                 use_graph=True, graph_lw=0.1, init_graph_path='', learnable=True, backbone='mstcn',
-                 r1=2, r2=2, channel_masking_rate=0.3):
-        if backbone == 'mstcn':
-            self.model = MultiStageModel(num_blocks, num_layers, num_f_maps, dim, num_classes, causal,
-                         use_graph=use_graph, init_graph_path=init_graph_path, learnable=learnable)
-        elif backbone == 'asformer':
-            self.model = ASFormerPROTAS(num_decoders=num_blocks - 1, num_layers=num_layers, r1=r1, r2=r2,
-                         num_f_maps=num_f_maps, input_dim=dim, num_classes=num_classes,
-                         channel_masking_rate=channel_masking_rate, causal=causal,
-                         use_graph=use_graph, init_graph_path=init_graph_path, learnable=learnable)
-        else:
-            raise ValueError(f"backbone non supportato: {backbone!r}, scegli 'mstcn' o 'asformer'")
-
-        self.ce = nn.CrossEntropyLoss(ignore_index=-100)       
+class Pipeline:
+    def __init__(self, model, num_classes, logger, save_dir, actions_dict, progress_lw=1, graph_lw=0.1):
+        self.model = model  # ricevuto già costruito
+        self.ce = nn.CrossEntropyLoss(ignore_index=-100)
         self.mse = nn.MSELoss(reduction='none')
         self.num_classes = num_classes
         self.progress_lw = progress_lw
-        self.use_graph = use_graph
         self.graph_lw = graph_lw
         self.logger = logger
+        self.actions_dict = actions_dict
+        self.save_dir = save_dir
 
-    def train(self, save_dir, batch_gen, num_epochs, batch_size, learning_rate, device):
+
+    def train(self, batch_gen, num_epochs, batch_size, learning_rate, device):
         self.model.train()
         self.model.to(device)
         optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
+
+        best_acc = 0.0
+        # percorsi fissi — nessun rolling da tracciare
+        best_model_path = os.path.join(self.save_dir, "best.model")
+        best_opt_path   = os.path.join(self.save_dir, "best.opt")
+
         for epoch in range(num_epochs):
             epoch_loss = 0
             epoch_progress_loss = 0
@@ -278,22 +272,40 @@ class Trainer:
                 total += torch.sum(mask[:, 0, :]).item()
 
             batch_gen.reset()
-            if (epoch + 1) % 5 == 0:
-                torch.save(self.model.state_dict(), save_dir + "/epoch-" + str(epoch + 1) + ".model")
-                torch.save(optimizer.state_dict(), save_dir + "/epoch-" + str(epoch + 1) + ".opt")
-            self.logger.info("[epoch %d]: epoch loss = %f, progress loss = %f, graph loss = %f, acc = %f" % (epoch + 1, 
+
+            acc = float(correct) / total
+
+            # --- best model save ---
+            if acc > best_acc:
+                best_acc = acc
+                # sovrascrive direttamente best.model / best.opt (nomi fissi, nessuna pulizia necessaria)
+                torch.save(self.model.state_dict(), best_model_path)
+                torch.save(optimizer.state_dict(), best_opt_path)
+                self.logger.info(f"  --> New best model saved: best.model  (train acc={acc:.4f}, epoch={epoch + 1})")
+            # --------------------------------
+
+            self.logger.info("[epoch %d]: epoch loss = %f, progress loss = %f, graph loss = %f, acc = %f" % (epoch + 1,
                                                               epoch_loss / len(batch_gen.list_of_examples),
                                                               epoch_progress_loss / len(batch_gen.list_of_examples),
                                                               epoch_graph_loss / len(batch_gen.list_of_examples),
-                                                              float(correct)/total))
+                                                              acc))
+
+        return best_model_path
 
   
 
-    def predict(self, model_dir, results_dir, vid_list_file, epoch, actions_dict, device, sample_rate, feature_transpose=False, map_delimiter=' ', dataset_root=None, is_unified=False):
+    def predict(self, vid_list_file, device, sample_rate, feature_transpose=False, map_delimiter=' ', dataset_root=None, is_unified=False):
         self.model.eval()
         with torch.no_grad():
             self.model.to(device)
-            self.model.load_state_dict(torch.load(model_dir + "/epoch-" + str(epoch) + ".model"))
+            # il modello sta sempre in exp_dir/best.model
+            model_path = os.path.join(self.save_dir, "best.model")
+            self.model.load_state_dict(torch.load(model_path))
+
+            # le predizioni vanno nella sottocartella predict/
+            predict_dir = os.path.join(self.save_dir, "predict")
+            os.makedirs(predict_dir, exist_ok=True)
+
             bundle_path = f"{dataset_root}/splits/{vid_list_file}.bundle"
             file_ptr = open(bundle_path, 'r')
             list_of_vids = file_ptr.read().split('\n')[:-1]
@@ -302,7 +314,7 @@ class Trainer:
                 # OLD:
                 # features = np.load(features_path + vid.split('.')[0] + '.npy')
 
-                # CHANGED: il path delle feature viene risolto dalla entry del bundle
+                #  il path delle feature viene risolto dalla entry del bundle
                 _, features_path, _ = resolve_entry_paths(dataset_root, vid, is_unified)
                 features = np.load(features_path)
 
@@ -319,18 +331,25 @@ class Trainer:
                 predicted = predicted.squeeze()
                 recognition = []
                 for i in range(len(predicted)):
-                    recognition = np.concatenate((recognition, [list(actions_dict.keys())[list(actions_dict.values()).index(predicted[i].item())]]*sample_rate))
+                    recognition = np.concatenate((recognition, [list(self.actions_dict.keys())[list(self.actions_dict.values()).index(predicted[i].item())]]*sample_rate))
                 f_name = vid.split('/')[-1].split('.')[0]
-                f_ptr = open(results_dir + "/" + f_name, "w")
+                f_ptr = open(os.path.join(predict_dir, f_name), "w")
                 f_ptr.write("### Frame level recognition: ###\n")
                 f_ptr.write(map_delimiter.join(recognition))
                 f_ptr.close()
 
-    def predict_online(self, model_dir, results_dir, vid_list_file, epoch, actions_dict, device, sample_rate, feature_transpose=False, map_delimiter=' ', dataset_root=None, is_unified=False):
+    def predict_online(self, vid_list_file, device, sample_rate, feature_transpose=False, map_delimiter=' ', dataset_root=None, is_unified=False):
         self.model.eval()
         with torch.no_grad():
             self.model.to(device)
-            self.model.load_state_dict(torch.load(model_dir + "/epoch-" + str(epoch) + ".model"))
+            # il modello sta sempre in save_dir/best.model
+            model_path = os.path.join(self.save_dir, "best.model")
+            self.model.load_state_dict(torch.load(model_path))
+
+            # le predizioni vanno nella sottocartella predict/
+            predict_dir = os.path.join(self.save_dir, "predict")
+            os.makedirs(predict_dir, exist_ok=True)
+
             bundle_path = f"{dataset_root}/splits/{vid_list_file}.bundle"
             file_ptr = open(bundle_path, 'r')
             list_of_vids = file_ptr.read().split('\n')[:-1]
@@ -339,7 +358,7 @@ class Trainer:
                 # OLD:
                 # features = np.load(features_path + vid.split('.')[0] + '.npy')
 
-                # CHANGED: il path delle feature viene risolto dalla entry del bundle
+                #  il path delle feature viene risolto dalla entry del bundle
                 _, features_path, _ = resolve_entry_paths(dataset_root, vid, is_unified)
                 features = np.load(features_path)
 
@@ -357,9 +376,9 @@ class Trainer:
                     final_predictions = self.model.graph_learner.inference(predictions[-1], progress_predictions[-1])
                     _, predicted = torch.max(final_predictions.data, 1)
                     predicted = predicted.squeeze(0)
-                    recognition = np.concatenate((recognition, [list(actions_dict.keys())[list(actions_dict.values()).index(predicted[-1].item())]]*sample_rate))
+                    recognition = np.concatenate((recognition, [list(self.actions_dict.keys())[list(self.actions_dict.values()).index(predicted[-1].item())]]*sample_rate))
                 f_name = vid.split('/')[-1].split('.')[0]
-                f_ptr = open(results_dir + "/" + f_name, "w")
+                f_ptr = open(os.path.join(predict_dir, f_name), "w")
                 f_ptr.write("### Frame level recognition: ###\n")
                 f_ptr.write(map_delimiter.join(recognition))
                 f_ptr.close()
