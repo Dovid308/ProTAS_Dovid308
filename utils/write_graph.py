@@ -8,7 +8,7 @@ from pathlib import Path
 # ==============================================================
 # PATH SETTINGS (Relative Path)
 # ==============================================================
-BASE_PATH = Path("data/EgoPER_action_segmentation")
+BASE_PATH = Path("data/EgoPER_action_segmentation/")
 
 def write_graph_from_transcripts(dataset, bg_class=[0], map_delimiter=' '):
     """
@@ -165,3 +165,7 @@ if __name__ == '__main__':
         # Note: If your local mapping files use a space instead of a pipe, change map_delimiter to ' '
         write_graph_from_transcripts(recipe, bg_class=[0], map_delimiter='|')
     write_global_graph(recipes_list)
+
+
+    #Gtea
+    #write_graph_from_transcripts("gtea", bg_class=[0], map_delimiter=' ')

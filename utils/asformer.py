@@ -152,47 +152,113 @@ class AttLayer(nn.Module):
         output = output[:, :, 0:L]
         return output * mask[:, 0:1, :]  
     
-    def _sliding_window_self_att(self, q,k,v, mask):
+    #def _sliding_window_self_att(self, q,k,v, mask):
+    #    m_batchsize, c1, L = q.size()
+    #    _, c2, _ = k.size()
+    #    _, c3, _ = v.size()
+    #    
+    #    
+    #    assert m_batchsize == 1  # currently, we only accept input with batch size 1
+    #    # padding zeros for the last segment
+    #    nb = L // self.bl 
+    #    if L % self.bl != 0:
+    #        q = torch.cat([q, torch.zeros((m_batchsize, c1, self.bl - L % self.bl)).to(device)], dim=-1)
+    #        k = torch.cat([k, torch.zeros((m_batchsize, c2, self.bl - L % self.bl)).to(device)], dim=-1)
+    #        v = torch.cat([v, torch.zeros((m_batchsize, c3, self.bl - L % self.bl)).to(device)], dim=-1)
+    #        nb += 1
+    #    padding_mask = torch.cat([torch.ones((m_batchsize, 1, L)).to(device) * mask[:,0:1,:], torch.zeros((m_batchsize, 1, self.bl * nb - L)).to(device)],dim=-1)
+    #    
+    #    # sliding window approach, by splitting query_proj and key_proj into shape (c1, l) x (c1, 2l)
+    #    # sliding window for query_proj: reshape
+    #    q = q.reshape(m_batchsize, c1, nb, self.bl).permute(0, 2, 1, 3).reshape(m_batchsize * nb, c1, self.bl)
+    #    
+    #    # sliding window approach for key_proj
+    #    # 1. add paddings at the start and end
+    #    k = torch.cat([torch.zeros(m_batchsize, c2, self.bl // 2).to(device), k, torch.zeros(m_batchsize, c2, self.bl // 2).to(device)], dim=-1)
+    #    v = torch.cat([torch.zeros(m_batchsize, c3, self.bl // 2).to(device), v, torch.zeros(m_batchsize, c3, self.bl // 2).to(device)], dim=-1)
+    #    padding_mask = torch.cat([torch.zeros(m_batchsize, 1, self.bl // 2).to(device), padding_mask, torch.zeros(m_batchsize, 1, self.bl // 2).to(device)], dim=-1)
+    #    
+    #    # 2. reshape key_proj of shape (m_batchsize*nb, c1, 2*self.bl)
+    #    k = torch.cat([k[:,:, i*self.bl:(i+1)*self.bl+(self.bl//2)*2] for i in range(nb)], dim=0) # special case when self.bl = 1
+    #    v = torch.cat([v[:,:, i*self.bl:(i+1)*self.bl+(self.bl//2)*2] for i in range(nb)], dim=0) 
+    #    # 3. construct window mask of shape (1, l, 2l), and use it to generate final mask
+    #    padding_mask = torch.cat([padding_mask[:,:, i*self.bl:(i+1)*self.bl+(self.bl//2)*2] for i in range(nb)], dim=0) # of shape (m*nb, 1, 2l)
+    #    final_mask = self.window_mask.repeat(m_batchsize * nb, 1, 1) * padding_mask 
+    #    
+    #    output, attention = self.att_helper.scalar_dot_att(q, k, v, final_mask)
+    #    output = self.conv_out(F.relu(output))
+#
+    #    output = output.reshape(m_batchsize, nb, -1, self.bl).permute(0, 2, 1, 3).reshape(m_batchsize, -1, nb * self.bl)
+    #    output = output[:, :, 0:L]
+    #    return output * mask[:, 0:1, :]
+
+    def _sliding_window_self_att(self, q, k, v, mask):
         m_batchsize, c1, L = q.size()
         _, c2, _ = k.size()
         _, c3, _ = v.size()
-        
-        
-        assert m_batchsize == 1  # currently, we only accept input with batch size 1
-        # padding zeros for the last segment
-        nb = L // self.bl 
+    
+        # ── 1. padding per allineare a multipli di bl ──────────────────────
+        nb = L // self.bl
         if L % self.bl != 0:
-            q = torch.cat([q, torch.zeros((m_batchsize, c1, self.bl - L % self.bl)).to(device)], dim=-1)
-            k = torch.cat([k, torch.zeros((m_batchsize, c2, self.bl - L % self.bl)).to(device)], dim=-1)
-            v = torch.cat([v, torch.zeros((m_batchsize, c3, self.bl - L % self.bl)).to(device)], dim=-1)
+            pad = self.bl - L % self.bl
+            q = torch.cat([q, torch.zeros(m_batchsize, c1, pad, device=q.device)], dim=-1)
+            k = torch.cat([k, torch.zeros(m_batchsize, c2, pad, device=k.device)], dim=-1)
+            v = torch.cat([v, torch.zeros(m_batchsize, c3, pad, device=v.device)], dim=-1)
             nb += 1
-        padding_mask = torch.cat([torch.ones((m_batchsize, 1, L)).to(device) * mask[:,0:1,:], torch.zeros((m_batchsize, 1, self.bl * nb - L)).to(device)],dim=-1)
-        
-        # sliding window approach, by splitting query_proj and key_proj into shape (c1, l) x (c1, 2l)
-        # sliding window for query_proj: reshape
-        q = q.reshape(m_batchsize, c1, nb, self.bl).permute(0, 2, 1, 3).reshape(m_batchsize * nb, c1, self.bl)
-        
-        # sliding window approach for key_proj
-        # 1. add paddings at the start and end
-        k = torch.cat([torch.zeros(m_batchsize, c2, self.bl // 2).to(device), k, torch.zeros(m_batchsize, c2, self.bl // 2).to(device)], dim=-1)
-        v = torch.cat([torch.zeros(m_batchsize, c3, self.bl // 2).to(device), v, torch.zeros(m_batchsize, c3, self.bl // 2).to(device)], dim=-1)
-        padding_mask = torch.cat([torch.zeros(m_batchsize, 1, self.bl // 2).to(device), padding_mask, torch.zeros(m_batchsize, 1, self.bl // 2).to(device)], dim=-1)
-        
-        # 2. reshape key_proj of shape (m_batchsize*nb, c1, 2*self.bl)
-        k = torch.cat([k[:,:, i*self.bl:(i+1)*self.bl+(self.bl//2)*2] for i in range(nb)], dim=0) # special case when self.bl = 1
-        v = torch.cat([v[:,:, i*self.bl:(i+1)*self.bl+(self.bl//2)*2] for i in range(nb)], dim=0) 
-        # 3. construct window mask of shape (1, l, 2l), and use it to generate final mask
-        padding_mask = torch.cat([padding_mask[:,:, i*self.bl:(i+1)*self.bl+(self.bl//2)*2] for i in range(nb)], dim=0) # of shape (m*nb, 1, 2l)
-        final_mask = self.window_mask.repeat(m_batchsize * nb, 1, 1) * padding_mask 
-        
-        output, attention = self.att_helper.scalar_dot_att(q, k, v, final_mask)
+    
+        padding_mask = torch.cat([
+            torch.ones(m_batchsize, 1, L, device=q.device) * mask[:, 0:1, :],
+            torch.zeros(m_batchsize, 1, self.bl * nb - L, device=q.device)
+        ], dim=-1)
+    
+        # ── 2. reshape query: (B, C, nb*bl) → (B*nb, C, bl) ───────────────
+        #    prima: (B, C, nb, bl) → permute → (B, nb, C, bl) → reshape
+        q = q.reshape(m_batchsize, c1, nb, self.bl) \
+             .permute(0, 2, 1, 3) \
+             .reshape(m_batchsize * nb, c1, self.bl)
+    
+        # ── 3. sliding window per key e value ──────────────────────────────
+        half = self.bl // 2
+        # padding sinistro e destro per la finestra scorrevole
+        k = torch.cat([
+            torch.zeros(m_batchsize, c2, half, device=k.device), k,
+            torch.zeros(m_batchsize, c2, half, device=k.device)
+        ], dim=-1)
+        v = torch.cat([
+            torch.zeros(m_batchsize, c3, half, device=v.device), v,
+            torch.zeros(m_batchsize, c3, half, device=v.device)
+        ], dim=-1)
+        padding_mask = torch.cat([
+            torch.zeros(m_batchsize, 1, half, device=q.device), padding_mask,
+            torch.zeros(m_batchsize, 1, half, device=q.device)
+        ], dim=-1)
+    
+        # ── 4. estrai le finestre SENZA mescolare i sample ─────────────────
+        #    shape target: (B, nb, C, bl + 2*half)  poi reshape → (B*nb, C, 2*bl)
+        win = self.bl + 2 * half
+        k_wins = torch.stack([k[:, :, i*self.bl : i*self.bl + win] for i in range(nb)], dim=1)
+        v_wins = torch.stack([v[:, :, i*self.bl : i*self.bl + win] for i in range(nb)], dim=1)
+        m_wins = torch.stack([padding_mask[:, :, i*self.bl : i*self.bl + win] for i in range(nb)], dim=1)
+    
+        # (B, nb, C, win) → (B*nb, C, win)
+        k = k_wins.reshape(m_batchsize * nb, c2, win)
+        v = v_wins.reshape(m_batchsize * nb, c3, win)
+        m = m_wins.reshape(m_batchsize * nb, 1, win)
+    
+        # ── 5. window mask + attention ──────────────────────────────────────
+        final_mask = self.window_mask.repeat(m_batchsize * nb, 1, 1) * m
+    
+        output, _ = self.att_helper.scalar_dot_att(q, k, v, final_mask)
         output = self.conv_out(F.relu(output))
 
+        
+        
         output = output.reshape(m_batchsize, nb, -1, self.bl).permute(0, 2, 1, 3).reshape(m_batchsize, -1, nb * self.bl)
+        
         output = output[:, :, 0:L]
+
         return output * mask[:, 0:1, :]
-
-
+    
 class MultiHeadAttLayer(nn.Module):
     def __init__(self, q_dim, k_dim, v_dim, r1, r2, r3, bl, stage, att_type, num_head):
         super(MultiHeadAttLayer, self).__init__()

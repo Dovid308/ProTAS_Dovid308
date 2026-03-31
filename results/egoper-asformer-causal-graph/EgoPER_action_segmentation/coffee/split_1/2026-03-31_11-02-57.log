@@ -1,0 +1,115 @@
+2026-03-31 11:02:57,462 - INFO - Namespace(action='train', exp_id='egoper-asformer-causal-graph', backbone='asformer', causal=True, dataset='EgoPER_action_segmentation/coffee', split='1', batch_size=4, num_epochs=70, lr=0.0005, progress_lw=1.0, learnable_graph=True, graph=True, graph_lw=0.1)
+2026-03-31 11:02:57,938 - INFO - Backbone: asformer | Parametri totali: 1,140,800 | Trainabili: 1,140,288
+2026-03-31 11:03:53,425 - INFO -   --> New best model saved: best.model  (train acc=0.2028, epoch=1)
+2026-03-31 11:03:53,426 - INFO - [epoch 1]: epoch loss = 2.938805, progress loss = 0.071164, graph loss = 0.001416, acc = 0.202754
+2026-03-31 11:05:09,397 - INFO -   --> New best model saved: best.model  (train acc=0.4133, epoch=2)
+2026-03-31 11:05:09,399 - INFO - [epoch 2]: epoch loss = 2.686446, progress loss = 0.076494, graph loss = 0.001042, acc = 0.413254
+2026-03-31 11:06:24,651 - INFO - [epoch 3]: epoch loss = 2.523532, progress loss = 0.040959, graph loss = 0.001056, acc = 0.413246
+2026-03-31 11:07:38,172 - INFO - [epoch 4]: epoch loss = 2.356337, progress loss = 0.038882, graph loss = 0.000713, acc = 0.413254
+2026-03-31 11:08:56,199 - INFO - [epoch 5]: epoch loss = 2.220618, progress loss = 0.036518, graph loss = 0.000710, acc = 0.413246
+2026-03-31 11:10:14,775 - INFO - [epoch 6]: epoch loss = 2.134295, progress loss = 0.032819, graph loss = 0.000505, acc = 0.413254
+2026-03-31 11:11:34,540 - INFO - [epoch 7]: epoch loss = 2.034193, progress loss = 0.029216, graph loss = 0.000513, acc = 0.413254
+2026-03-31 11:12:52,105 - INFO - [epoch 8]: epoch loss = 1.956403, progress loss = 0.032539, graph loss = 0.000293, acc = 0.413254
+2026-03-31 11:14:05,521 - INFO - [epoch 9]: epoch loss = 1.872785, progress loss = 0.035795, graph loss = 0.000259, acc = 0.413237
+2026-03-31 11:15:24,501 - INFO -   --> New best model saved: best.model  (train acc=0.4147, epoch=10)
+2026-03-31 11:15:24,503 - INFO - [epoch 10]: epoch loss = 1.756565, progress loss = 0.033230, graph loss = 0.000145, acc = 0.414720
+2026-03-31 11:16:37,929 - INFO -   --> New best model saved: best.model  (train acc=0.4402, epoch=11)
+2026-03-31 11:16:37,931 - INFO - [epoch 11]: epoch loss = 1.662261, progress loss = 0.037730, graph loss = 0.000024, acc = 0.440166
+2026-03-31 11:17:53,274 - INFO -   --> New best model saved: best.model  (train acc=0.4670, epoch=12)
+2026-03-31 11:17:53,276 - INFO - [epoch 12]: epoch loss = 1.627904, progress loss = 0.038957, graph loss = -0.000053, acc = 0.466966
+2026-03-31 11:19:11,234 - INFO -   --> New best model saved: best.model  (train acc=0.4754, epoch=13)
+2026-03-31 11:19:11,236 - INFO - [epoch 13]: epoch loss = 1.469596, progress loss = 0.038020, graph loss = -0.000108, acc = 0.475368
+2026-03-31 11:20:28,626 - INFO -   --> New best model saved: best.model  (train acc=0.4885, epoch=14)
+2026-03-31 11:20:28,627 - INFO - [epoch 14]: epoch loss = 1.379933, progress loss = 0.040481, graph loss = -0.000278, acc = 0.488526
+2026-03-31 11:21:41,897 - INFO -   --> New best model saved: best.model  (train acc=0.5407, epoch=15)
+2026-03-31 11:21:41,898 - INFO - [epoch 15]: epoch loss = 1.381328, progress loss = 0.039907, graph loss = -0.000318, acc = 0.540720
+2026-03-31 11:22:57,071 - INFO -   --> New best model saved: best.model  (train acc=0.5645, epoch=16)
+2026-03-31 11:22:57,072 - INFO - [epoch 16]: epoch loss = 1.301656, progress loss = 0.037309, graph loss = -0.000440, acc = 0.564504
+2026-03-31 11:23:44,587 - INFO -   --> New best model saved: best.model  (train acc=0.6101, epoch=17)
+2026-03-31 11:23:44,588 - INFO - [epoch 17]: epoch loss = 1.180099, progress loss = 0.035244, graph loss = -0.000486, acc = 0.610061
+2026-03-31 11:24:30,143 - INFO -   --> New best model saved: best.model  (train acc=0.6151, epoch=18)
+2026-03-31 11:24:30,144 - INFO - [epoch 18]: epoch loss = 1.178158, progress loss = 0.034924, graph loss = -0.000672, acc = 0.615114
+2026-03-31 11:25:13,918 - INFO -   --> New best model saved: best.model  (train acc=0.6318, epoch=19)
+2026-03-31 11:25:13,919 - INFO - [epoch 19]: epoch loss = 1.133465, progress loss = 0.034362, graph loss = -0.000796, acc = 0.631825
+2026-03-31 11:26:00,721 - INFO -   --> New best model saved: best.model  (train acc=0.6609, epoch=20)
+2026-03-31 11:26:00,722 - INFO - [epoch 20]: epoch loss = 1.061429, progress loss = 0.033230, graph loss = -0.000925, acc = 0.660858
+2026-03-31 11:26:46,140 - INFO -   --> New best model saved: best.model  (train acc=0.7093, epoch=21)
+2026-03-31 11:26:46,141 - INFO - [epoch 21]: epoch loss = 1.009712, progress loss = 0.032407, graph loss = -0.000991, acc = 0.709346
+2026-03-31 11:27:33,050 - INFO -   --> New best model saved: best.model  (train acc=0.7169, epoch=22)
+2026-03-31 11:27:33,051 - INFO - [epoch 22]: epoch loss = 0.969428, progress loss = 0.032509, graph loss = -0.001090, acc = 0.716896
+2026-03-31 11:28:18,539 - INFO -   --> New best model saved: best.model  (train acc=0.7605, epoch=23)
+2026-03-31 11:28:18,540 - INFO - [epoch 23]: epoch loss = 0.906988, progress loss = 0.031191, graph loss = -0.001217, acc = 0.760492
+2026-03-31 11:29:03,275 - INFO -   --> New best model saved: best.model  (train acc=0.7662, epoch=24)
+2026-03-31 11:29:03,276 - INFO - [epoch 24]: epoch loss = 0.892105, progress loss = 0.029949, graph loss = -0.001253, acc = 0.766159
+2026-03-31 11:29:50,219 - INFO -   --> New best model saved: best.model  (train acc=0.7848, epoch=25)
+2026-03-31 11:29:50,220 - INFO - [epoch 25]: epoch loss = 0.861163, progress loss = 0.029231, graph loss = -0.001337, acc = 0.784813
+2026-03-31 11:30:35,332 - INFO -   --> New best model saved: best.model  (train acc=0.8005, epoch=26)
+2026-03-31 11:30:35,333 - INFO - [epoch 26]: epoch loss = 0.845620, progress loss = 0.028063, graph loss = -0.001398, acc = 0.800458
+2026-03-31 11:31:18,929 - INFO -   --> New best model saved: best.model  (train acc=0.8033, epoch=27)
+2026-03-31 11:31:18,929 - INFO - [epoch 27]: epoch loss = 0.854515, progress loss = 0.027486, graph loss = -0.001554, acc = 0.803271
+2026-03-31 11:32:04,986 - INFO - [epoch 28]: epoch loss = 0.837345, progress loss = 0.026783, graph loss = -0.001572, acc = 0.798072
+2026-03-31 11:32:51,523 - INFO - [epoch 29]: epoch loss = 0.830771, progress loss = 0.026616, graph loss = -0.001730, acc = 0.800331
+2026-03-31 11:33:39,021 - INFO -   --> New best model saved: best.model  (train acc=0.8164, epoch=30)
+2026-03-31 11:33:39,022 - INFO - [epoch 30]: epoch loss = 0.774005, progress loss = 0.024666, graph loss = -0.001761, acc = 0.816377
+2026-03-31 11:34:24,723 - INFO -   --> New best model saved: best.model  (train acc=0.8305, epoch=31)
+2026-03-31 11:34:24,724 - INFO - [epoch 31]: epoch loss = 0.729478, progress loss = 0.024448, graph loss = -0.001876, acc = 0.830480
+2026-03-31 11:35:10,324 - INFO -   --> New best model saved: best.model  (train acc=0.8368, epoch=32)
+2026-03-31 11:35:10,325 - INFO - [epoch 32]: epoch loss = 0.711429, progress loss = 0.023376, graph loss = -0.001975, acc = 0.836820
+2026-03-31 11:35:55,805 - INFO -   --> New best model saved: best.model  (train acc=0.8542, epoch=33)
+2026-03-31 11:35:55,806 - INFO - [epoch 33]: epoch loss = 0.678416, progress loss = 0.022652, graph loss = -0.002041, acc = 0.854213
+2026-03-31 11:36:40,013 - INFO - [epoch 34]: epoch loss = 0.708389, progress loss = 0.023455, graph loss = -0.002164, acc = 0.849654
+2026-03-31 11:37:25,651 - INFO -   --> New best model saved: best.model  (train acc=0.8562, epoch=35)
+2026-03-31 11:37:25,652 - INFO - [epoch 35]: epoch loss = 0.667740, progress loss = 0.022065, graph loss = -0.002253, acc = 0.856164
+2026-03-31 11:38:12,038 - INFO -   --> New best model saved: best.model  (train acc=0.8614, epoch=36)
+2026-03-31 11:38:12,039 - INFO - [epoch 36]: epoch loss = 0.680959, progress loss = 0.022170, graph loss = -0.002334, acc = 0.861362
+2026-03-31 11:38:59,022 - INFO -   --> New best model saved: best.model  (train acc=0.8654, epoch=37)
+2026-03-31 11:38:59,023 - INFO - [epoch 37]: epoch loss = 0.647971, progress loss = 0.021033, graph loss = -0.002410, acc = 0.865393
+2026-03-31 11:39:43,058 - INFO -   --> New best model saved: best.model  (train acc=0.8688, epoch=38)
+2026-03-31 11:39:43,059 - INFO - [epoch 38]: epoch loss = 0.652486, progress loss = 0.021504, graph loss = -0.002569, acc = 0.868819
+2026-03-31 11:40:28,545 - INFO -   --> New best model saved: best.model  (train acc=0.8809, epoch=39)
+2026-03-31 11:40:28,546 - INFO - [epoch 39]: epoch loss = 0.596626, progress loss = 0.020335, graph loss = -0.002638, acc = 0.880885
+2026-03-31 11:41:14,857 - INFO - [epoch 40]: epoch loss = 0.601086, progress loss = 0.019727, graph loss = -0.002707, acc = 0.877485
+2026-03-31 11:42:00,871 - INFO - [epoch 41]: epoch loss = 0.583939, progress loss = 0.018819, graph loss = -0.002874, acc = 0.877937
+2026-03-31 11:42:44,899 - INFO -   --> New best model saved: best.model  (train acc=0.8898, epoch=42)
+2026-03-31 11:42:44,900 - INFO - [epoch 42]: epoch loss = 0.597008, progress loss = 0.019939, graph loss = -0.002932, acc = 0.889824
+2026-03-31 11:43:30,103 - INFO - [epoch 43]: epoch loss = 0.566707, progress loss = 0.017935, graph loss = -0.002973, acc = 0.884456
+2026-03-31 11:44:15,861 - INFO -   --> New best model saved: best.model  (train acc=0.8929, epoch=44)
+2026-03-31 11:44:15,862 - INFO - [epoch 44]: epoch loss = 0.538412, progress loss = 0.017489, graph loss = -0.003101, acc = 0.892909
+2026-03-31 11:45:02,905 - INFO -   --> New best model saved: best.model  (train acc=0.8967, epoch=45)
+2026-03-31 11:45:02,906 - INFO - [epoch 45]: epoch loss = 0.529034, progress loss = 0.016843, graph loss = -0.003227, acc = 0.896718
+2026-03-31 11:45:49,389 - INFO - [epoch 46]: epoch loss = 0.527053, progress loss = 0.017044, graph loss = -0.003361, acc = 0.892517
+2026-03-31 11:46:35,249 - INFO -   --> New best model saved: best.model  (train acc=0.8968, epoch=47)
+2026-03-31 11:46:35,250 - INFO - [epoch 47]: epoch loss = 0.517374, progress loss = 0.016602, graph loss = -0.003457, acc = 0.896804
+2026-03-31 11:47:21,013 - INFO - [epoch 48]: epoch loss = 0.519637, progress loss = 0.016078, graph loss = -0.003504, acc = 0.894400
+2026-03-31 11:48:07,682 - INFO -   --> New best model saved: best.model  (train acc=0.9018, epoch=49)
+2026-03-31 11:48:07,683 - INFO - [epoch 49]: epoch loss = 0.495882, progress loss = 0.015442, graph loss = -0.003597, acc = 0.901763
+2026-03-31 11:48:52,574 - INFO -   --> New best model saved: best.model  (train acc=0.9044, epoch=50)
+2026-03-31 11:48:52,575 - INFO - [epoch 50]: epoch loss = 0.497447, progress loss = 0.015882, graph loss = -0.003706, acc = 0.904405
+2026-03-31 11:49:39,407 - INFO -   --> New best model saved: best.model  (train acc=0.9100, epoch=51)
+2026-03-31 11:49:39,408 - INFO - [epoch 51]: epoch loss = 0.474696, progress loss = 0.014705, graph loss = -0.003826, acc = 0.910012
+2026-03-31 11:50:25,240 - INFO - [epoch 52]: epoch loss = 0.469256, progress loss = 0.014860, graph loss = -0.003959, acc = 0.908623
+2026-03-31 11:51:16,397 - INFO - [epoch 53]: epoch loss = 0.466137, progress loss = 0.014400, graph loss = -0.004033, acc = 0.909586
+2026-03-31 11:52:03,065 - INFO -   --> New best model saved: best.model  (train acc=0.9151, epoch=54)
+2026-03-31 11:52:03,066 - INFO - [epoch 54]: epoch loss = 0.466896, progress loss = 0.014862, graph loss = -0.004134, acc = 0.915091
+2026-03-31 11:52:53,519 - INFO - [epoch 55]: epoch loss = 0.486888, progress loss = 0.015307, graph loss = -0.004213, acc = 0.912458
+2026-03-31 11:53:41,821 - INFO - [epoch 56]: epoch loss = 0.476707, progress loss = 0.014536, graph loss = -0.004327, acc = 0.908589
+2026-03-31 11:54:27,946 - INFO - [epoch 57]: epoch loss = 0.466580, progress loss = 0.015321, graph loss = -0.004410, acc = 0.907839
+2026-03-31 11:55:29,018 - INFO - [epoch 58]: epoch loss = 0.454088, progress loss = 0.014215, graph loss = -0.004556, acc = 0.910890
+2026-03-31 11:56:29,185 - INFO -   --> New best model saved: best.model  (train acc=0.9189, epoch=59)
+2026-03-31 11:56:29,186 - INFO - [epoch 59]: epoch loss = 0.472234, progress loss = 0.014598, graph loss = -0.004628, acc = 0.918943
+2026-03-31 11:57:29,851 - INFO - [epoch 60]: epoch loss = 0.434622, progress loss = 0.013628, graph loss = -0.004739, acc = 0.916429
+2026-03-31 11:58:35,040 - INFO - [epoch 61]: epoch loss = 0.466468, progress loss = 0.014600, graph loss = -0.004811, acc = 0.915730
+2026-03-31 11:59:33,845 - INFO -   --> New best model saved: best.model  (train acc=0.9217, epoch=62)
+2026-03-31 11:59:33,846 - INFO - [epoch 62]: epoch loss = 0.429138, progress loss = 0.013936, graph loss = -0.004978, acc = 0.921678
+2026-03-31 12:00:34,346 - INFO - [epoch 63]: epoch loss = 0.424695, progress loss = 0.013698, graph loss = -0.005122, acc = 0.921499
+2026-03-31 12:01:37,962 - INFO -   --> New best model saved: best.model  (train acc=0.9253, epoch=64)
+2026-03-31 12:01:37,963 - INFO - [epoch 64]: epoch loss = 0.413262, progress loss = 0.013047, graph loss = -0.005195, acc = 0.925334
+2026-03-31 12:02:40,327 - INFO -   --> New best model saved: best.model  (train acc=0.9276, epoch=65)
+2026-03-31 12:02:40,328 - INFO - [epoch 65]: epoch loss = 0.409438, progress loss = 0.013364, graph loss = -0.005297, acc = 0.927584
+2026-03-31 12:03:48,129 - INFO -   --> New best model saved: best.model  (train acc=0.9296, epoch=66)
+2026-03-31 12:03:48,131 - INFO - [epoch 66]: epoch loss = 0.401541, progress loss = 0.012712, graph loss = -0.005455, acc = 0.929637
+2026-03-31 12:04:51,374 - INFO - [epoch 67]: epoch loss = 0.418327, progress loss = 0.013031, graph loss = -0.005512, acc = 0.927635
+2026-03-31 12:06:04,011 - INFO - [epoch 68]: epoch loss = 0.401754, progress loss = 0.012232, graph loss = -0.005615, acc = 0.926254
+2026-03-31 12:07:11,517 - INFO - [epoch 69]: epoch loss = 0.408060, progress loss = 0.012811, graph loss = -0.005759, acc = 0.928214
+2026-03-31 12:08:25,962 - INFO -   --> New best model saved: best.model  (train acc=0.9334, epoch=70)
+2026-03-31 12:08:25,963 - INFO - [epoch 70]: epoch loss = 0.376784, progress loss = 0.011808, graph loss = -0.005868, acc = 0.933378

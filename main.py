@@ -3,7 +3,6 @@ from batch_gen import BatchGenerator
 import os
 import argparse
 import random
-from eval import evaluate
 import logging
 from datetime import datetime
 from model import MultiStageModel, ASFormerPROTAS, Pipeline
@@ -56,16 +55,31 @@ num_epochs = args.num_epochs
 is_unified = False 
 if (args.dataset == "EgoPER_action_segmentation"):
    is_unified=True
-
-
-
 # use the full temporal resolution @ 15fps -> actually we dont use salads
+
+if (is_unified):
+  mapping_file = f"./data/{args.dataset}/mapping_global.txt"
+else:
+    mapping_file = f"./data/{args.dataset}/mapping.txt"
+
 sample_rate = 1
 # sample input features @ 15fps instead of 30 fps
 # for 50salads, and up-sample the output to 30 fps
 if args.dataset == "50salads":
     sample_rate = 2
+
 #QUI ANCORA DEVO CAPIRE BENE COSA VUOL DIRE STA ROBA, IO ANCORA NON HO TOCCATO
+# Read action mapping file
+with open(mapping_file, 'r') as file_ptr:
+    actions = file_ptr.read().split('\n')[:-1]
+# Create action dictionary
+actions_dict = dict()
+bg_class = 'BG' if args.dataset in ['EgoPER_action_segmentation/coffee', 'EgoPER_action_segmentation/tea', 'EgoPER_action_segmentation/pinwheels', 'EgoPER_action_segmentation/oatmeal', 'EgoPER_action_segmentation/quesadilla', 'EgoPER_action_segmentation'] else 'background'
+map_delimiter = '|' if args.dataset in ['EgoPER_action_segmentation/coffee', 'EgoPER_action_segmentation/tea', 'EgoPER_action_segmentation/pinwheels', 'EgoPER_action_segmentation/oatmeal', 'EgoPER_action_segmentation/quesadilla', 'EgoPER_action_segmentation'] else ' '
+feature_transpose = True if args.dataset in ['EgoPER_action_segmentation/coffee', 'EgoPER_action_segmentation/tea', 'EgoPER_action_segmentation/pinwheels', 'EgoPER_action_segmentation/oatmeal', 'EgoPER_action_segmentation/quesadilla', 'EgoPER_action_segmentation'] else False
+for a in actions:
+    actions_dict[a.split(map_delimiter)[1]] = int(a.split(map_delimiter)[0])
+num_classes = len(actions_dict)
 
 
 # Small path resolution
@@ -73,10 +87,7 @@ if args.dataset == "50salads":
 train_list = f"train.split{args.split}"
 test_list = f"test.split{args.split}"
 
-if (is_unified):
-  mapping_file = f"./data/{args.dataset}/mapping_global.txt"
-else:
-    mapping_file = f"./data/{args.dataset}/mapping.txt"
+
 
 graph_path = f"./data/{args.dataset}/graph/graph.pkl"
 
@@ -103,16 +114,7 @@ logger.addHandler(ch)
 
 logger.info(args)
 
-# Read action mapping file
-with open(mapping_file, 'r') as file_ptr:
-    actions = file_ptr.read().split('\n')[:-1]
-# Create action dictionary
-actions_dict = dict()
-map_delimiter = '|' # if args.dataset in ['EgoPER_action_segmentation/coffee', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else ' '
-feature_transpose = True #if args.dataset in ['EgoPER_action_segmentation', 'tea', 'pinwheels', 'oatmeal', 'quesadilla'] else False
-for a in actions:
-    actions_dict[a.split(map_delimiter)[1]] = int(a.split(map_delimiter)[0])
-num_classes = len(actions_dict)
+
 
 
 
@@ -164,39 +166,29 @@ pipe = Pipeline(
     logger=logger,
     save_dir=expdir,
     actions_dict=actions_dict,
-    #magari li sposti nel metodo in se in tanto li tengo qua
     progress_lw=args.progress_lw,
-    graph_lw=args.graph_lw
+    graph_lw=args.graph_lw,
+    bg_class = bg_class,
+    map_delimiter = map_delimiter
 )
 
 
 
-# Perform the specified action
+
 if args.action == "train":
     batch_gen = BatchGenerator(f"data/{args.dataset}", num_classes, actions_dict, sample_rate, feature_transpose, is_unified)
     batch_gen.read_data(train_list)
-
     pipe.train(batch_gen, num_epochs=num_epochs, batch_size=bz, learning_rate=lr, device=device)
-
     
-    pipe.predict(test_list, actions_dict, device, sample_rate, feature_transpose, map_delimiter, 
-                    dataset_root=f"data/{args.dataset}", is_unified=is_unified)  
-    # si potrebbe anche decidere se portare evaluate come metodo della pipeline
-    evaluate(expdir, args.split, args.exp_id,
-             dataset_root=f"data/{args.dataset}", is_unified=is_unified, map_delimiter=map_delimiter, bg_class=['BG'])
+    pipe.predict(test_list, device, sample_rate, feature_transpose, f"data/{args.dataset}", is_unified=is_unified)
+    pipe.evaluate(test_list,f"data/{args.dataset}", is_unified=is_unified)
+
 
 elif args.action == 'predict':
+    pipe.predict(test_list, device, sample_rate, feature_transpose,f"data/{args.dataset}", is_unified=is_unified)
+    pipe.evaluate(test_list,f"data/{args.dataset}", is_unified=is_unified)
 
-    pipe.predict(test_list, actions_dict, device, sample_rate, feature_transpose, map_delimiter, 
-                    dataset_root=f"data/{args.dataset}", is_unified=is_unified)  
-
-    evaluate( expdir, args.split, args.exp_id,
-             dataset_root=f"data/{args.dataset}", is_unified=is_unified, map_delimiter=map_delimiter, bg_class=['BG'])
 
 elif args.action == "predict_online":
-
-    pipe.predict_online(expdir, test_list, actions_dict, device, sample_rate, feature_transpose, map_delimiter,
-                           dataset_root=f"data/{args.dataset}", is_unified=is_unified)  
-    
-    evaluate(expdir, args.split, args.exp_id,
-             dataset_root=f"data/{args.dataset}", is_unified=is_unified, map_delimiter=map_delimiter, bg_class=['BG'])
+    pipe.predict_online(test_list, device, sample_rate, feature_transpose, dataset_root=f"data/{args.dataset}", is_unified=is_unified)
+    pipe.evaluate(test_list, f"data/{args.dataset}", is_unified=is_unified)

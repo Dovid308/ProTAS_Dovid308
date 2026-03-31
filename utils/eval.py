@@ -4,16 +4,16 @@
 import numpy as np
 import argparse
 from itertools import groupby
-import os
-import json
+#import os
+#import json
 
 
-def read_file(path):
-    with open(path, 'r') as f:
-        content = f.read()
-        f.close()
-    return content
-
+#def read_file(path):
+#    with open(path, 'r') as f:
+#        content = f.read()
+#        f.close()
+#    return content
+#I moved evaluate in the pipeline class and make it inline 
 
 def get_labels_start_end_time(frame_wise_labels, bg_class=["background"]):
     labels = []
@@ -98,78 +98,83 @@ def f_score(recognized, ground_truth, overlap, bg_class=["background"]):
     return float(tp), float(fp), float(fn)
 
     
-from utils.utils_paths import resolve_entry_paths
+#### Versione modificata inizialemente
+# from utils.utils_paths import resolve_entry_paths
+#
+#def evaluate(result_dir, split, dataset_root=None, is_unified=False, bg_class=['BG']):
+#    # Bundle path risolto
+#    bundle_path = f"{dataset_root}/splits/test.split{split}.bundle"
+#    list_of_videos = read_file(bundle_path).split('\n')[:-1]
+#    
+#    overlap = [.1, .25, .5] 
+#    tp, fp, fn = np.zeros(3), np.zeros(3), np.zeros(3)
+#    correct = 0     
+#    total = 0      
+#    correct_wo_bg = 0
+#    total_wo_bg = 0 
+#    edit = 0       
+#    
+#    # MODIFICATO: parametri da input (default BG, map_delimiter=' ')
+#    # bg_class sempre ['BG']
+#
+#    # le predizioni stanno nella sottocartella predict/
+#    predict_dir = os.path.join(result_dir, "predict")
+#    
+#    for vid in list_of_videos:
+#        if not vid.endswith('.txt'):
+#            vid = vid + '.txt'
+#        
+#        gt_path, _, _ = resolve_entry_paths(dataset_root, vid, is_unified)
+#        gt_content = gt_path.read_text().strip().splitlines()
+#        
+#        f_name = vid.split('/')[-1].split('.')[0]
+#        # MODIFICATO: legge da predict_dir invece che da result_dir
+#        recog_file = os.path.join(predict_dir, f_name)
+#        recog_content = read_file(recog_file).split('\n')[1].split('|') #vediamo se questo era il motivo
+#        
+#        for i in range(len(gt_content)):
+#            if gt_content[i] not in bg_class:
+#                total_wo_bg += 1
+#                if gt_content[i] == recog_content[i]:
+#                    correct_wo_bg += 1
+#            
+#            total += 1
+#            if gt_content[i] == recog_content[i]:
+#                correct += 1
+#                
+#        # BUGFIX: edit_score calcolato una volta per video, non dentro il loop per frame
+#        edit += edit_score(recog_content, gt_content, bg_class=bg_class)
+#        
+#        for s in range(len(overlap)):
+#            tp1, fp1, fn1 = f_score(recog_content, gt_content, overlap[s], bg_class)
+#            tp[s] += tp1
+#            fp[s] += fp1
+#            fn[s] += fn1
+#    
+#    acc = 100*float(correct)/total  
+#    acc_wo_bg = 100*float(correct_wo_bg)/total_wo_bg  
+#    edit = (1.0*edit)/len(list_of_videos)
+#    res_list = [acc, acc_wo_bg, edit]
+#    
+#    for s in range(len(overlap)):
+#        precision = tp[s] / float(tp[s]+fp[s])
+#        recall = tp[s] / float(tp[s]+fn[s])
+#        f1 = 2.0 * (precision*recall) / (precision+recall)
+#        f1 = np.nan_to_num(f1)*100         
+#        res_list.append(f1)
+#    
+#    print("Result:", ' '.join(['{:.2f}'.format(r) for r in res_list]))
+#    result_metrics = {'Acc': acc,  'Acc-bg': acc_wo_bg, 'Edit': edit,
+#                      'F1@10': res_list[-3], 'F1@25': res_list[-2], 'F1@50': res_list[-1]}
+#    # MODIFICATO: JSON salvato in result_dir (expdir), non in predict_dir
+#    result_path = os.path.join(result_dir, 'split'+split+'.eval.json')
+#    with open(result_path, 'w') as fw:
+#        json.dump(result_metrics, fw, indent=4)
+#
 
-def evaluate(result_dir, split, dataset_root=None, is_unified=False, map_delimiter='|', bg_class=['BG']):
-    # Bundle path risolto
-    bundle_path = f"{dataset_root}/splits/test.split{split}.bundle"
-    list_of_videos = read_file(bundle_path).split('\n')[:-1]
-    
-    overlap = [.1, .25, .5] 
-    tp, fp, fn = np.zeros(3), np.zeros(3), np.zeros(3)
-    correct = 0     
-    total = 0      
-    correct_wo_bg = 0
-    total_wo_bg = 0 
-    edit = 0       
-    
-    # MODIFICATO: parametri da input (default BG, map_delimiter=' ')
-    # bg_class sempre ['BG']
 
-    # le predizioni stanno nella sottocartella predict/
-    predict_dir = os.path.join(result_dir, "predict")
-    
-    for vid in list_of_videos:
-        if not vid.endswith('.txt'):
-            vid = vid + '.txt'
-        
-        gt_path, _, _ = resolve_entry_paths(dataset_root, vid, is_unified)
-        gt_content = gt_path.read_text().strip().splitlines()
-        
-        f_name = vid.split('/')[-1].split('.')[0]
-        # MODIFICATO: legge da predict_dir invece che da result_dir
-        recog_file = os.path.join(predict_dir, f_name)
-        recog_content = read_file(recog_file).split('\n')[1].split(map_delimiter)
-        
-        for i in range(len(gt_content)):
-            if gt_content[i] not in bg_class:
-                total_wo_bg += 1
-                if gt_content[i] == recog_content[i]:
-                    correct_wo_bg += 1
-            
-            total += 1
-            if gt_content[i] == recog_content[i]:
-                correct += 1
-                
-        # BUGFIX: edit_score calcolato una volta per video, non dentro il loop per frame
-        edit += edit_score(recog_content, gt_content, bg_class=bg_class)
-        
-        for s in range(len(overlap)):
-            tp1, fp1, fn1 = f_score(recog_content, gt_content, overlap[s], bg_class)
-            tp[s] += tp1
-            fp[s] += fp1
-            fn[s] += fn1
-    
-    acc = 100*float(correct)/total  
-    acc_wo_bg = 100*float(correct_wo_bg)/total_wo_bg  
-    edit = (1.0*edit)/len(list_of_videos)
-    res_list = [acc, acc_wo_bg, edit]
-    
-    for s in range(len(overlap)):
-        precision = tp[s] / float(tp[s]+fp[s])
-        recall = tp[s] / float(tp[s]+fn[s])
-        f1 = 2.0 * (precision*recall) / (precision+recall)
-        f1 = np.nan_to_num(f1)*100         
-        res_list.append(f1)
-    
-    print("Result:", ' '.join(['{:.2f}'.format(r) for r in res_list]))
-    result_metrics = {'Acc': acc,  'Acc-bg': acc_wo_bg, 'Edit': edit,
-                      'F1@10': res_list[-3], 'F1@25': res_list[-2], 'F1@50': res_list[-1]}
-    # MODIFICATO: JSON salvato in result_dir (expdir), non in predict_dir
-    result_path = os.path.join(result_dir, 'split'+split+'.eval.json')
-    with open(result_path, 'w') as fw:
-        json.dump(result_metrics, fw, indent=4)
 
+## Versione originale
 #def evaluate(dataset, result_dir, split, exp_id, num_epochs):
 #    ground_truth_path = "./data/"+dataset+"/groundTruth/"
 #    recog_path = result_dir #"./results/"+exp_id+"/"+dataset+"/epoch"+str(num_epochs)+"/split_"+split+"/"

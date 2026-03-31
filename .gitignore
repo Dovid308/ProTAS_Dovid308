@@ -1,6 +1,6 @@
 data/ 
 models/
 __pycache__  
-results/
+slurm/logs/
 
-
+*.zip

@@ -8,6 +8,8 @@ import numpy as np
 import tqdm
 import pickle
 from utils.utils_paths import resolve_entry_paths
+from  utils.eval import *
+import json
 
 # Define the MultiStageModel class
 class MultiStageModel(nn.Module):
@@ -216,7 +218,7 @@ class ASFormerPROTAS(nn.Module):
 
 
 class Pipeline:
-    def __init__(self, model, num_classes, logger, save_dir, actions_dict, progress_lw=1, graph_lw=0.1):
+    def __init__(self, model, num_classes, logger, save_dir, actions_dict, progress_lw=1, graph_lw=0.1, bg_class=['BG'], map_delimiter='|'):
         self.model = model  # ricevuto già costruito
         self.ce = nn.CrossEntropyLoss(ignore_index=-100)
         self.mse = nn.MSELoss(reduction='none')
@@ -226,6 +228,8 @@ class Pipeline:
         self.logger = logger
         self.actions_dict = actions_dict
         self.save_dir = save_dir
+        self.bg_class = bg_class
+        self.map_delimiter = map_delimiter
 
 
     def train(self, batch_gen, num_epochs, batch_size, learning_rate, device):
@@ -283,7 +287,9 @@ class Pipeline:
                 torch.save(optimizer.state_dict(), best_opt_path)
                 self.logger.info(f"  --> New best model saved: best.model  (train acc={acc:.4f}, epoch={epoch + 1})")
             # --------------------------------
-
+            alloc = torch.cuda.memory_allocated() / 1e6
+            reserved = torch.cuda.memory_reserved() / 1e6
+            print(f"Epoch {epoch} | Alloc: {alloc:.1f} MB | Reserved: {reserved:.1f} MB", flush=True)
             self.logger.info("[epoch %d]: epoch loss = %f, progress loss = %f, graph loss = %f, acc = %f" % (epoch + 1,
                                                               epoch_loss / len(batch_gen.list_of_examples),
                                                               epoch_progress_loss / len(batch_gen.list_of_examples),
@@ -294,7 +300,7 @@ class Pipeline:
 
   
 
-    def predict(self, vid_list_file, device, sample_rate, feature_transpose=False, map_delimiter=' ', dataset_root=None, is_unified=False):
+    def predict(self, vid_list_file, device, sample_rate, feature_transpose=False, dataset_root=None, is_unified=False):
         self.model.eval()
         with torch.no_grad():
             self.model.to(device)
@@ -335,10 +341,10 @@ class Pipeline:
                 f_name = vid.split('/')[-1].split('.')[0]
                 f_ptr = open(os.path.join(predict_dir, f_name), "w")
                 f_ptr.write("### Frame level recognition: ###\n")
-                f_ptr.write(map_delimiter.join(recognition))
+                f_ptr.write(self.map_delimiter.join(recognition))
                 f_ptr.close()
 
-    def predict_online(self, vid_list_file, device, sample_rate, feature_transpose=False, map_delimiter=' ', dataset_root=None, is_unified=False):
+    def predict_online(self, vid_list_file, device, sample_rate, feature_transpose=False, dataset_root=None, is_unified=False):
         self.model.eval()
         with torch.no_grad():
             self.model.to(device)
@@ -380,6 +386,80 @@ class Pipeline:
                 f_name = vid.split('/')[-1].split('.')[0]
                 f_ptr = open(os.path.join(predict_dir, f_name), "w")
                 f_ptr.write("### Frame level recognition: ###\n")
-                f_ptr.write(map_delimiter.join(recognition))
+                f_ptr.write(self.map_delimiter.join(recognition))
                 f_ptr.close()
+    
+    def evaluate(self, vid_list_file, dataset_root=None, is_unified=False):
+        # Bundle path risolto
 
+        
+
+        bundle_path = f"{dataset_root}/splits/{vid_list_file}.bundle"
+        with open(bundle_path, 'r') as f:
+            list_of_videos = f.read().split('\n')[:-1]
+
+        overlap = [.1, .25, .5] 
+        tp, fp, fn = np.zeros(3), np.zeros(3), np.zeros(3)
+        correct = 0     
+        total = 0      
+        correct_wo_bg = 0
+        total_wo_bg = 0 
+        edit = 0       
+
+        
+
+        # le predizioni stanno nella sottocartella predict/
+        predict_dir = os.path.join(self.save_dir, "predict")
+
+        for vid in list_of_videos:
+            if not vid.endswith('.txt'):
+                vid = vid + '.txt'
+
+            gt_path, _, _ = resolve_entry_paths(dataset_root, vid, is_unified)
+            gt_content = gt_path.read_text().strip().splitlines()
+
+            f_name = vid.split('/')[-1].split('.')[0]
+            # MODIFICATO: legge da predict_dir invece che da result_dir
+            recog_file = os.path.join(predict_dir, f_name)
+            #inline
+            with open(recog_file, 'r') as f:
+                recog_content = f.read().split('\n')[1].split(self.map_delimiter)
+
+            for i in range(len(gt_content)):
+                if gt_content[i] not in self.bg_class:
+                    total_wo_bg += 1
+                    if gt_content[i] == recog_content[i]:
+                        correct_wo_bg += 1
+
+                total += 1
+                if gt_content[i] == recog_content[i]:
+                    correct += 1
+
+            # BUGFIX: edit_score calcolato una volta per video, non dentro il loop per frame
+            edit += edit_score(recog_content, gt_content, bg_class=self.bg_class)
+
+            for s in range(len(overlap)):
+                tp1, fp1, fn1 = f_score(recog_content, gt_content, overlap[s], self.bg_class)
+                tp[s] += tp1
+                fp[s] += fp1
+                fn[s] += fn1
+
+        acc = 100*float(correct)/total  
+        acc_wo_bg = 100*float(correct_wo_bg)/total_wo_bg  
+        edit = (1.0*edit)/len(list_of_videos)
+        res_list = [acc, acc_wo_bg, edit]
+
+        for s in range(len(overlap)):
+            precision = tp[s] / float(tp[s]+fp[s])
+            recall = tp[s] / float(tp[s]+fn[s])
+            f1 = 2.0 * (precision*recall) / (precision+recall)
+            f1 = np.nan_to_num(f1)*100         
+            res_list.append(f1)
+
+        print("Result:", ' '.join(['{:.2f}'.format(r) for r in res_list]))
+        result_metrics = {'Acc': acc,  'Acc-bg': acc_wo_bg, 'Edit': edit,
+                          'F1@10': res_list[-3], 'F1@25': res_list[-2], 'F1@50': res_list[-1]}
+        # MODIFICATO: JSON salvato in result_dir (expdir), non in predict_dir
+        result_path = os.path.join(self.save_dir, vid_list_file + '.eval.json')
+        with open(result_path, 'w') as fw:
+            json.dump(result_metrics, fw, indent=4)

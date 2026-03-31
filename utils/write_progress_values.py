@@ -8,7 +8,7 @@ from pathlib import Path
 # ==============================================================
 # PATH SETTINGS (Relative Path)
 # ==============================================================
-BASE_PATH = Path("data/EgoPER_action_segmentation")
+BASE_PATH = Path("data/")
 
 def write_progress_values(dataset, bg_class=[0], map_delimiter=' '):
     """
@@ -85,7 +85,7 @@ from pathlib import Path
 # ==============================================================
 # PATH SETTINGS (Relative Path)
 # ==============================================================
-BASE_PATH = Path("data/EgoPER_action_segmentation")
+BASE_PATH = Path("data/EgoPER_action_segmentation/")
 
 def write_progress_values(dataset, bg_class=[0], map_delimiter=' '):
     """
@@ -231,4 +231,8 @@ if __name__ == '__main__':
     print("="*60)
     write_global_progress(recipes_list, bg_class=[0], map_delimiter='|')
 
+
+
+    ##Gtea
+    #write_progress_values("gtea", bg_class=[0], map_delimiter=' ')
 

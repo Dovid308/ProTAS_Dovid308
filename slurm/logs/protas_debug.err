@@ -1,8 +1,0 @@
-  0%|          | 0/28 [00:00<?, ?it/s]100%|██████████| 28/28 [00:00<00:00, 1325.83it/s]
-  0%|          | 0/28 [00:00<?, ?it/s]100%|██████████| 28/28 [00:00<00:00, 337.55it/s]
-Namespace(action='train', dataset='gtea', split='1', batch_size=4, exp_id='protas_debug', num_epochs=5, causal=False, graph=True, learnable_graph=True, lr=0.001, progress_lw=1.0, graph_lw=0.1)
-[epoch 1]: epoch loss = 2.709886, progress loss = 0.058145, graph loss = 0.002045, acc = 0.133801
-[epoch 2]: epoch loss = 2.498429, progress loss = 0.046518, graph loss = 0.001834, acc = 0.219851
-[epoch 3]: epoch loss = 2.390459, progress loss = 0.058982, graph loss = 0.001617, acc = 0.236943
-[epoch 4]: epoch loss = 2.241965, progress loss = 0.055494, graph loss = 0.001387, acc = 0.263396
-[epoch 5]: epoch loss = 2.058624, progress loss = 0.056227, graph loss = 0.001124, acc = 0.263351
